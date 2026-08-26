@@ -1,0 +1,47 @@
+import { lazy, Suspense } from 'react'
+import { Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout.jsx'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
+import Login from './pages/Login.jsx'
+
+const Upload = lazy(() => import('./pages/Upload.jsx'))
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
+const Explorer = lazy(() => import('./pages/Explorer.jsx'))
+const Threats = lazy(() => import('./pages/Threats.jsx'))
+const Graph = lazy(() => import('./pages/Graph.jsx'))
+const Intel = lazy(() => import('./pages/Intel.jsx'))
+const Privacy = lazy(() => import('./pages/Privacy.jsx'))
+const ExportPage = lazy(() => import('./pages/ExportPage.jsx'))
+const Benchmark = lazy(() => import('./pages/Benchmark.jsx'))
+const Demo = lazy(() => import('./pages/Demo.jsx'))
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-sm text-slate-500 animate-pulse">Loading...</div>
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Suspense fallback={<PageLoader />}><Upload /></Suspense>} />
+          <Route path="/demo" element={<Suspense fallback={<PageLoader />}><Demo /></Suspense>} />
+          <Route path="/dashboard" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
+          <Route path="/dashboard/:jobId" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
+          <Route path="/explorer" element={<Suspense fallback={<PageLoader />}><Explorer /></Suspense>} />
+          <Route path="/threats" element={<Suspense fallback={<PageLoader />}><Threats /></Suspense>} />
+          <Route path="/graph" element={<Suspense fallback={<PageLoader />}><Graph /></Suspense>} />
+          <Route path="/intel" element={<Suspense fallback={<PageLoader />}><Intel /></Suspense>} />
+          <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
+          <Route path="/export" element={<Suspense fallback={<PageLoader />}><ExportPage /></Suspense>} />
+          <Route path="/benchmark" element={<Suspense fallback={<PageLoader />}><Benchmark /></Suspense>} />
+        </Route>
+      </Route>
+    </Routes>
+  )
+}

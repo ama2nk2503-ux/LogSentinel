@@ -1,0 +1,60 @@
+{
+  "_comment": "Deterministic rule -> MITRE ATT&CK technique mapping. Missing entries render UNMAPPED.",
+  "_tactic_order": [
+    "reconnaissance",
+    "resource-development",
+    "initial-access",
+    "execution",
+    "persistence",
+    "privilege-escalation",
+    "defense-evasion",
+    "credential-access",
+    "discovery",
+    "lateral-movement",
+    "collection",
+    "command-and-control",
+    "exfiltration",
+    "impact"
+  ],
+  "mappings": {
+    "BRUTE_FORCE_001": [
+      {"technique": "T1110.001", "name": "Brute Force: Password Guessing", "tactic": "credential-access"}
+    ],
+    "WIN_LOGON_BURST_001": [
+      {"technique": "T1110.003", "name": "Brute Force: Password Spraying", "tactic": "credential-access"}
+    ],
+    "PRIV_ESC_001": [
+      {"technique": "T1548.003", "name": "Abuse Elevation Control Mechanism: Sudo and Sudo Caching", "tactic": "privilege-escalation"}
+    ],
+    "PORT_SCAN_001": [
+      {"technique": "T1046", "name": "Network Service Discovery", "tactic": "discovery"}
+    ],
+    "HOST_SCAN_001": [
+      {"technique": "T1018", "name": "Remote System Discovery", "tactic": "discovery"}
+    ],
+    "IDS_ALERT_BURST_001": [
+      {"technique": "T1595", "name": "Active Scanning", "tactic": "reconnaissance"}
+    ],
+    "WEB_SQLI_001": [
+      {"technique": "T1190", "name": "Exploit Public-Facing Application", "tactic": "initial-access"}
+    ],
+    "WEB_TRAVERSAL_001": [
+      {"technique": "T1083", "name": "File and Directory Discovery", "tactic": "discovery"}
+    ],
+    "WEB_XSS_001": [
+      {"technique": "T1059.007", "name": "Command and Scripting Interpreter: JavaScript", "tactic": "execution"}
+    ],
+    "WEB_CMD_INJ_001": [
+      {"technique": "T1059", "name": "Command and Scripting Interpreter", "tactic": "execution"}
+    ],
+    "MAL_POWERSHELL_001": [
+      {"technique": "T1059.001", "name": "Command and Scripting Interpreter: PowerShell", "tactic": "execution"}
+    ],
+    "MAL_DOWNLOAD_EXEC_001": [
+      {"technique": "T1105", "name": "Ingress Tool Transfer", "tactic": "command-and-control"}
+    ],
+    "MAL_PERSISTENCE_001": [
+      {"technique": "T1547", "name": "Boot or Logon Autostart Execution", "tactic": "persistence"}
+    ]
+  }
+}

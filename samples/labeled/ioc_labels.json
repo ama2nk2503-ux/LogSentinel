@@ -1,0 +1,18 @@
+{
+  "file": "ioc_sample.log",
+  "ground_truth": {
+    "format": "firewall",
+    "iocs": [
+      "185.23.45.67",
+      "203.0.113.9",
+      "198.51.100.77",
+      "malware.example.com",
+      "c2.evil-domain.net",
+      "backup-server.internal.local",
+      "http://185.23.45.67/payload/x.sh",
+      "5d41402abc4b2a76b9719d911017c592",
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "2001:db8::dead:beef"
+    ]
+  }
+}

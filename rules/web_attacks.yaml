@@ -1,0 +1,45 @@
+# Web attack detection rules (regex over request/message text)
+rules:
+  - rule_id: WEB_SQLI_001
+    name: Possible SQL Injection
+    description: SQLi patterns in HTTP requests
+    category: Web Attack
+    severity: HIGH
+    event_types: [http_request, proxy_request]
+    regex: "union\\s+select|('\\s*(or|and)\\s*'?[0-9']|\\bor\\s+1\\s*=\\s*1)|--\\s*$|;\\s*drop\\s+table|sleep\\s*\\("
+    group_by: [source_ip]
+    threshold: 1
+    window: 30m
+
+  - rule_id: WEB_TRAVERSAL_001
+    name: Possible Path Traversal
+    description: Directory traversal / sensitive file access attempts
+    category: Web Attack
+    severity: HIGH
+    event_types: [http_request, proxy_request]
+    regex: "\\.\\./|/etc/(passwd|shadow)|boot\\.ini|%2e%2e%2f"
+    group_by: [source_ip]
+    threshold: 1
+    window: 30m
+
+  - rule_id: WEB_XSS_001
+    name: Possible XSS Attempt
+    description: Script injection patterns in requests
+    category: Web Attack
+    severity: MEDIUM
+    event_types: [http_request, proxy_request]
+    regex: "<script\\b|javascript:|onerror\\s*="
+    group_by: [source_ip]
+    threshold: 1
+    window: 30m
+
+  - rule_id: WEB_CMD_INJ_001
+    name: Possible Command Injection
+    description: OS command execution attempts via parameters
+    category: Web Attack
+    severity: CRITICAL
+    event_types: [http_request, proxy_request]
+    regex: ";\\s*(cat|id|whoami|wget|curl)\\b|\\|\\s*(cat|id|whoami)\\b|\\$\\((?:cat|id|whoami)\\)"
+    group_by: [source_ip]
+    threshold: 1
+    window: 30m

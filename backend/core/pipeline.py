@@ -1,0 +1,159 @@
+"""Pipeline orchestrator.
+
+Flow: sample -> detect format (confidence) -> parse via registry ->
+normalize -> UniversalEvent -> batched SQLite persistence.
+IOC / rules / correlation hook in at marked extension points (P4+).
+"""
+
+import time
+from collections import Counter
+
+from core import jobs
+from core.config import settings
+from core.ingest import iter_line_chunks
+from core.storage import db
+from ioc.extractor import detect_suspicious, extract_iocs
+from normalization.normalizer import normalize
+from parsers.detector import detect_format
+from parsers.load_all import *  # noqa: F401,F403 — registers all parsers
+from parsers.registry import get_file_handler, get_line_parser
+from privacy.pii_detector import detect_pii
+
+FLUSH = 2000
+
+
+def _detect(job_id: str, path) -> dict:
+    sample_batch = next(iter_line_chunks(path, chunk_lines=400), [])
+    info = detect_format(sample_batch)
+    label = info.get("subtype") or info["format"]
+    jobs.update_job(job_id, detected_format=label,
+                    format_confidence=round(info["confidence"] * 100))
+    jobs.merge_stats(job_id, format_scores=info["scores"])
+    return info
+
+
+def run_job(job_id: str) -> None:
+    try:
+        jobs.update_job(job_id, status="processing")
+        path = next(settings.upload_dir.glob(f"{job_id}__*"), None)
+        if path is None:
+            jobs.fail_job(job_id, "Uploaded file missing on disk")
+            return
+
+        t0 = time.perf_counter()
+        fmt_info = _detect(job_id, path)
+        jobs.set_stage(job_id, "detected")
+
+        fmt = fmt_info["format"]
+        handler = get_file_handler(fmt)
+        parser = get_line_parser(fmt)
+
+        total = normalized = 0
+        pii_events = 0
+        type_counts: Counter[str] = Counter()
+        ioc_type_counts: Counter[str] = Counter()
+        ioc_total = 0
+        raw_buf: list[tuple] = []
+        event_buf: list[tuple] = []
+
+        def handle(line_no, raw, fields):
+            nonlocal total, normalized, ioc_total, pii_events
+            total += 1
+            raw_buf.append((job_id, line_no or total, raw[:8000]))
+            ev = normalize(fields, job_id, line_no or total, raw)
+            # --- S08: IOC extraction over message + high-signal fields ---
+            fields = fields or {}
+            ioc_text = " ".join(str(x) for x in (
+                ev.message,
+                fields.get("http_path") or "",
+                fields.get("url") or "",
+                fields.get("command_line") or "",
+                fields.get("domain") or "",
+            ) if x)
+            ev.iocs = extract_iocs(ioc_text)
+            flags = detect_suspicious(ioc_text)
+            if flags:
+                ev.extras["suspicious"] = flags
+            if ev.iocs:
+                ioc_total += len(ev.iocs)
+                for i in ev.iocs:
+                    ioc_type_counts[i["type"]] += 1
+            # --- S09: PII detection recorded on the event ---
+            ev.pii_detected = sorted({h["type"] for h in detect_pii(ev.message)})
+            if ev.pii_detected:
+                nonlocal pii_events
+                pii_events += 1
+            if fields:
+                normalized += 1
+                type_counts[ev.event_type] += 1
+            event_buf.append(ev.to_row())
+            if len(raw_buf) >= FLUSH:
+                flush()
+
+        def flush():
+            if raw_buf:
+                with db() as conn:
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO raw_lines (job_id, line_no, raw) VALUES (?, ?, ?)",
+                        raw_buf,
+                    )
+                    conn.executemany(
+                        "INSERT INTO events (event_id, job_id, line_no, ts, event_type, source,"
+                        " src_ip, dst_ip, src_port, dst_port, protocol, username, hostname,"
+                        " action, status, severity, message, threat_type, risk_score,"
+                        " iocs_json, pii_json, mappings_json, attack_json, extras_json)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        event_buf,
+                    )
+                raw_buf.clear()
+                event_buf.clear()
+
+        if handler is not None:
+            for line_no, raw, fields in handler(path):
+                handle(line_no, raw, fields)
+        else:
+            line_no = 0
+            for batch in iter_line_chunks(path):
+                for raw in batch:
+                    line_no += 1
+                    fields = parser(raw) if parser else None
+                    handle(line_no, raw, fields)
+                jobs.set_stage(job_id, "normalized", progress=min(99.0, total / 1000))
+        flush()
+
+        elapsed = time.perf_counter() - t0
+        jobs.merge_stats(
+            job_id,
+            total_lines=total,
+            parsed_lines=normalized,
+            unparsed_lines=total - normalized,
+            event_types=dict(type_counts.most_common(20)),
+            total_iocs=ioc_total,
+            ioc_types=dict(ioc_type_counts.most_common()),
+            pii_events=pii_events,
+            parser="file:" + fmt if handler else fmt,
+            process_seconds=round(elapsed, 3),
+            lines_per_second=int(total / elapsed) if elapsed > 0 else 0,
+        )
+        # P5/P6 extension points: rules / correlation over persisted events.
+        jobs.set_stage(job_id, "ioc_extracted")
+        from detection.correlator import build_incidents
+        from detection.engine import evaluate_job
+        dets = evaluate_job(job_id)
+        incidents = build_incidents(job_id)
+        stats_update = {}
+        if dets:
+            stats_update["detections"] = len(dets)
+        if incidents:
+            stats_update["incidents"] = len(incidents)
+        if stats_update:
+            jobs.merge_stats(job_id, **stats_update)
+        from intelligence.aggregator import build_intel
+        intel = build_intel(job_id)
+        jobs.merge_stats(job_id, intel_indicators=len(intel["indicators"]),
+                         intel_reports=len(intel["reports"]))
+        from detection.attack import enrich_job
+        enrich_job(job_id)
+        jobs.update_job(job_id, stage="classified", status="done", progress=100.0)
+    except Exception as exc:  # noqa: BLE001 — job isolation; error surfaces in job row
+        jobs.fail_job(job_id, f"{type(exc).__name__}: {exc}")

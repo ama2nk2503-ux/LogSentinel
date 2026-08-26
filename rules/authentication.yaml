@@ -1,0 +1,36 @@
+# Authentication threat detection rules
+rules:
+  - rule_id: BRUTE_FORCE_001
+    name: SSH/Linux Brute Force (failed logins)
+    description: Multiple failed authentications from one source in a short window
+    category: Brute Force
+    severity: HIGH
+    match: { event_type: auth_failure }
+    group_by: [source_ip]
+    metric: count
+    threshold: 3
+    window: 5m
+    then_success: true          # credential-abuse escalation if success follows
+
+  - rule_id: WIN_LOGON_BURST_001
+    name: Windows Failed Logon Burst (4625)
+    description: Burst of failed Windows logons (EventID 4625) from one source
+    category: Brute Force
+    severity: HIGH
+    match: { event_type: windows_event, event_id: 4625 }
+    group_by: [source_ip]
+    metric: count
+    threshold: 3
+    window: 10m
+    then_success: true
+
+  - rule_id: PRIV_ESC_001
+    name: Privilege Escalation Command
+    description: sudo/su elevation followed-through with commands
+    category: Privilege Escalation
+    severity: MEDIUM
+    match: { event_type: privilege_escalation }
+    group_by: [username]
+    metric: count
+    threshold: 1
+    window: 5m

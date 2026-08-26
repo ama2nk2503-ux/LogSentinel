@@ -1,0 +1,37 @@
+# Network threat detection rules
+rules:
+  - rule_id: PORT_SCAN_001
+    name: Port Scan (many ports denied)
+    description: One source contacting many destination ports with denials
+    category: Port Scanning
+    severity: HIGH
+    match: { event_type: firewall_event }
+    statuses: [deny, blocked, block]
+    group_by: [source_ip]
+    metric: distinct
+    distinct_field: destination_port
+    threshold: 6
+    window: 10m
+
+  - rule_id: HOST_SCAN_001
+    name: Network Scan (many hosts)
+    description: One source probing many destination hosts
+    category: Reconnaissance
+    severity: MEDIUM
+    match: { event_type: firewall_event }
+    group_by: [source_ip]
+    metric: distinct
+    distinct_field: destination_ip
+    threshold: 5
+    window: 10m
+
+  - rule_id: IDS_ALERT_BURST_001
+    name: IDS Alert Burst
+    description: Multiple IDS alerts from one source
+    category: Reconnaissance
+    severity: MEDIUM
+    match: { event_type: ids_alert }
+    group_by: [source_ip]
+    metric: count
+    threshold: 3
+    window: 15m

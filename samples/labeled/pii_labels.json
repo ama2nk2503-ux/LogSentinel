@@ -1,0 +1,16 @@
+{
+  "file": "pii_sample.log",
+  "ground_truth": {
+    "format": "syslog",
+    "pii": [
+      {"type": "EMAIL", "value": "amaan.khan@example.com"},
+      {"type": "EMAIL", "value": "jane.doe@corp.org"},
+      {"type": "PHONE", "value": "+91 98765 43210"},
+      {"type": "PASSWORD", "value": "Hunter2Secret"},
+      {"type": "API_KEY", "value": "AKIAIOSFODNN7EXAMPLE"},
+      {"type": "SESSION_ID", "value": "session_id=Zx91aa22bb33"},
+      {"type": "ACCOUNT_NUMBER", "value": "1234567890"},
+      {"type": "NAME", "value": "Amaan Khan"}
+    ]
+  }
+}
