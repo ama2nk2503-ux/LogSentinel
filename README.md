@@ -66,8 +66,9 @@ Open **http://127.0.0.1:5173**, login with `admin` / `changeme`.
 ```
                     ┌──────────────────────────────────────────────┐
                     │              React Frontend                   │
-                    │  Upload · Dashboard · Explorer · Threats     │
-                    │  Graph · Intel · Privacy · Export · Demo     │
+                    │  Upload · Dashboard · Explorer · Threats      │
+                    │  Graph · Intel · Alerts · Live · Compliance   │
+                    │  Assets · Privacy · Export · Benchmark · Demo │
                     └──────────────────┬───────────────────────────┘
                                        │ REST API
                     ┌──────────────────┴───────────────────────────┐
@@ -88,7 +89,9 @@ Open **http://127.0.0.1:5173**, login with `admin` / `changeme`.
 
 ## Pipeline
 
-Every log file goes through these 17 stages deterministically — no AI in the loop:
+Every log file goes through these 17 stages deterministically — every step
+explainable. One seeded, fully-offline ML signal (IsolationForest, no network)
+is trained per job and fed back into incident escalation with a reason line:
 
 ```
  1. INGESTION         Upload / paste / sample / stream → job (UUID)
@@ -109,6 +112,15 @@ Every log file goes through these 17 stages deterministically — no AI in the l
 16. THREAT INTEL      Indicator aggregation + human-readable reports
 17. EXPORT            JSON · CSV · CEF · LEEF · STIX 2.1 · Syslog · PDF
 ```
+
+**ML ANOMALY SCORING** (`backend/ml/`, scikit-learn, seeded `random_state=42`,
+single-threaded, offline): fits an IsolationForest per job over a deterministic
+16-dimension event vector, writes `anomaly_score` (0–1) + `anomalous` flags to
+every event, and escalates any correlated detection whose evidence contains an
+anomalous event by `+2..+30` risk with an auditable reason (e.g.
+`+20 ML anomaly signal (1/7 evidence events anomalous, peak score 0.97)`).
+Surfaced as the Explorer **ANOMALY** column (★ = flagged) and the Dashboard
+**ML ANOMALIES** card; inspect via `GET /api/ml/{job_id}`.
 
 ---
 
@@ -135,6 +147,14 @@ Every log file goes through these 17 stages deterministically — no AI in the l
 | **Ask-the-Data** | Natural-language query → intent chips + filtered results. Deterministic parser, zero AI |
 | **PDF Threat Report** | Branded multi-page report: exec summary, findings, evidence, charts (reportlab) |
 
+### Operational Capabilities (M1–M3)
+
+| Milestone | Feature | Details |
+|-----------|---------|---------|
+| **M1** | Live SOC Ops | Alerting engine (YAML rules, dedup, SMTP/webhook notify, ack/resolve/FP lifecycle), incident triage (NEW→RESOLVED + analyst + notes), MITRE investigation timeline, real-time EVENT WALL (1.5s polling) |
+| **M2** | Intel / Geo / Compliance / Assets | Offline GeoIP enrichment, bundled reputation feed (7 indicators), NIST SP 800-53 / CIS v8 / ISO 27001 audits with Markdown reports, asset inventory + per-asset alert rules |
+| **M3** | In-loop ML anomaly scoring | Seeded offline IsolationForest per job → `anomaly_score` + `anomalous` flags, evidence-driven incident risk bump with reason, Explorer ANOMALY column (★), Dashboard ML card, `GET /api/ml/{job_id}` |
+
 ### Privacy & Security
 
 | Feature | Details |
@@ -156,23 +176,41 @@ logsentinel/
 │   │   ├── routes_upload.py    #   POST /upload (file, paste, sample)
 │   │   ├── routes_dashboard.py #   GET /dashboard (stats, timeline, severity)
 │   │   ├── routes_events.py    #   GET /events (paginated, filterable)
-│   │   ├── routes_threats.py   #   GET /threats (incidents + kill-chain)
+│   │   ├── routes_detections.py#   GET /detections
+│   │   ├── routes_threats.py   #   GET /threats (incidents, kill-chain, triage)
+│   │   ├── routes_alerts.py    #   GET/POST /alerts, /alert-rules, notify/ack/resolve
 │   │   ├── routes_graph.py     #   GET /graph (nodes + edges)
-│   │   ├── routes_intel.py     #   GET /intel (IOCs + reports)
+│   │   ├── routes_intel.py     #   GET /intel, /intel/reputation/{value}
+│   │   ├── routes_geo.py       #   GET /geo/lookup, /geo/job/{id}
+│   │   ├── routes_audit.py     #   Compliance audits + Markdown reports
+│   │   ├── routes_assets.py    #   GET /assets (asset inventory)
+│   │   ├── routes_ml.py        #   GET /api/ml/{job_id} (model + anomalies)
 │   │   ├── routes_privacy.py   #   GET/PUT /policy, POST /policy/preview
 │   │   ├── routes_export.py    #   GET /export/{job}?format= (6 formats)
+│   │   ├── routes_ioc.py       #   IOC watchlist
+│   │   ├── routes_jobs.py      #   GET /jobs, /jobs/{id}
 │   │   ├── routes_benchmark.py #   POST /benchmark/run, GET /benchmark/results
 │   │   ├── routes_query.py     #   POST /query (Ask-the-Data)
 │   │   ├── routes_samples.py   #   GET /samples (bundled demo scenarios)
-│   │   └── routes_stream.py    #   POST /stream/start (live simulation)
+│   │   └── routes_stream.py    #   POST /stream/start|stop, GET /stream/recent
 │   ├── core/                   # Business logic
 │   │   ├── config.py           #   Settings (env-based)
-│   │   ├── storage.py          #   SQLite schema + connection (WAL mode)
+│   │   ├── storage.py          #   SQLite schema + migrations + connection (WAL mode)
 │   │   ├── auth.py             #   bcrypt hashing, JWT create/decode
 │   │   ├── pipeline.py         #   17-stage processing pipeline
+│   │   ├── alerts.py           #   Alerting engine (incident + IOC classes)
+│   │   ├── triage.py           #   Incident triage workflow
+│   │   ├── timeline.py         #   MITRE investigation timeline
+│   │   ├── geoip.py            #   Offline IP → geo lookup (rules/geoip/ranges.csv)
+│   │   ├── intel.py            #   Bundled reputation feed + verdicts
+│   │   ├── compliance.py       #   Framework audits (NIST/CIS/ISO)
+│   │   ├── assets.py           #   Asset inventory derivation
 │   │   ├── benchmark.py        #   Live benchmark harness
 │   │   ├── jobs.py             #   Job lifecycle management
 │   │   └── ingest.py           #   File upload + chunked reading
+│   ├── ml/                     # In-loop ML anomaly scorer (M3)
+│   │   ├── features.py         #   Deterministic 16-dim feature vector
+│   │   └── model.py            #   IsolationForest fit / score / bump, per-job persist
 │   ├── parsers/                # Format parsers
 │   │   ├── detector.py         #   Format auto-detection (confidence scoring)
 │   │   ├── registry.py         #   Parser registry + dispatch
@@ -226,11 +264,15 @@ logsentinel/
 │   │   └── pages/
 │   │       ├── Login.jsx       #   JWT authentication
 │   │       ├── Upload.jsx      #   File upload / paste / sample loader
-│   │       ├── Dashboard.jsx   #   Stats cards + timeline + severity donut
-│   │       ├── Explorer.jsx    #   Paginated event log (search + filters)
-│   │       ├── Threats.jsx     #   Threat incidents + ATT&CK kill-chain
+│   │       ├── Dashboard.jsx   #   Stats cards (incl. ML anomalies) + timeline + donut
+│   │       ├── Explorer.jsx    #   Paginated event log (search + filters + ANOMALY col)
+│   │       ├── Threats.jsx     #   Threat incidents + triage + ATT&CK kill-chain
+│   │       ├── Alerts.jsx      #   Alert queue + ack/resolve/FP + rule management
+│   │       ├── Live.jsx        #   Real-time EVENT WALL
 │   │       ├── Graph.jsx       #   Cytoscape.js entity attack graph
-│   │       ├── Intel.jsx       #   IOC feed + intelligence reports
+│   │       ├── Intel.jsx       #   Tabs: INDICATORS / REFERENCE FEED / REPUTATION / GEO
+│   │       ├── Compliance.jsx  #   Framework audits + Markdown report download
+│   │       ├── Assets.jsx      #   Asset inventory by criticality/risk
 │   │       ├── Privacy.jsx     #   Editable privacy policy UI
 │   │       ├── ExportPage.jsx  #   SIEM export (6 formats + PDF)
 │   │       ├── Benchmark.jsx   #   Live benchmark results
@@ -243,7 +285,11 @@ logsentinel/
 │   ├── network.yaml            #   Port scan, host scan
 │   ├── web_attacks.yaml        #   SQLi, XSS, path traversal
 │   ├── malware.yaml            #   Suspicious processes, encoded commands
+│   ├── alert_rules.yaml        #   SOC alerting rules (M1)
+│   ├── compliance.yaml         #   NIST/CIS/ISO framework controls (M2)
+│   ├── intel_reference.yaml    #   Bundled reputation feed (M2)
 │   ├── privacy_policy.yaml     #   Default REDACT policy
+│   ├── geoip/ranges.csv        #   Offline IP → geo subnet table (M2)
 │   └── attack_mapping.json     #   rule_id → MITRE ATT&CK technique mapping
 │
 ├── samples/                    # Bundled demo scenarios
@@ -259,21 +305,29 @@ logsentinel/
 │   ├── design.md               #   Technical design (17 pipeline stages)
 │   └── wow_features.spec.md    #   Feature specs with EARS requirements
 │
-├── tests/                      # 103 unit + integration tests
+├── tests/                      # 149 unit + integration tests
 │   ├── conftest.py             #   Shared fixtures
-│   ├── test_parsers.py         #   16 parser tests
-│   ├── test_ioc.py             #   16 IOC extraction tests
-│   ├── test_export.py          #   10 export format tests
-│   ├── test_privacy.py         #   11 privacy/redaction tests
-│   ├── test_normalization.py   #   9 normalization tests
-│   ├── test_detection.py       #   7 rule engine tests
-│   ├── test_detector.py        #   8 format detection tests
-│   ├── test_correlation.py     #   9 correlation tests
-│   ├── test_intent.py          #   6 Ask-the-Data tests
-│   ├── test_intel.py           #   4 intelligence tests
-│   ├── test_attack.py          #   3 ATT&CK mapping tests
-│   ├── test_benchmark.py       #   2 benchmark harness tests
-│   ├── test_pdf.py             #   2 PDF report tests
+│   ├── test_parsers.py         #   Format parsers
+│   ├── test_ioc.py             #   IOC extraction
+│   ├── test_export.py          #   Export formats
+│   ├── test_privacy.py         #   Privacy/redaction
+│   ├── test_normalization.py   #   Normalization
+│   ├── test_detection.py       #   Rule engine
+│   ├── test_detector.py        #   Format detection
+│   ├── test_correlation.py     #   Correlation
+│   ├── test_intent.py          #   Ask-the-Data
+│   ├── test_intel.py           #   Intelligence aggregation
+│   ├── test_attack.py          #   ATT&CK mapping
+│   ├── test_benchmark.py       #   Benchmark harness
+│   ├── test_pdf.py             #   PDF report
+│   ├── test_alerts.py          #   Alerting engine (M1)
+│   ├── test_triage.py          #   Triage workflow (M1)
+│   ├── test_timeline.py        #   Investigation timeline (M1)
+│   ├── test_geoip.py           #   GeoIP enrichment (M2)
+│   ├── test_intel_m2.py        #   Reputation feed + reload (M2)
+│   ├── test_compliance.py      #   Compliance audits (M2)
+│   ├── test_assets.py          #   Asset inventory (M2)
+│   ├── test_ml.py              #   ML anomaly scoring (M3)
 │   └── scripts/                #   Phase gate scripts (P1–P15)
 │
 ├── requirements.txt            # Python dependencies
@@ -296,7 +350,8 @@ logsentinel/
 | **Auth** | JWT (PyJWT) + bcrypt |
 | **Data Fetching** | TanStack Query v5 (auto-caching, polling) |
 | **Routing** | React Router v6 (lazy-loaded pages) |
-| **Testing** | pytest + httpx |
+| **ML** | scikit-learn (IsolationForest — seeded, offline, per-job) |
+| **Testing** | pytest + httpx, Playwright (axe accessibility) |
 
 ---
 
@@ -316,8 +371,21 @@ All endpoints require JWT auth (via `Authorization: Bearer <token>`) except `/ap
 | `GET` | `/api/events` | Paginated events (filter by severity, threat, search) |
 | `GET` | `/api/events/{id}` | Single event detail |
 | `GET` | `/api/threats` | Threat incidents + kill-chain |
+| `GET` | `/api/threats/triage/summary` | Triage state distribution (M1) |
+| `GET` | `/api/incidents/{id}/timeline` | MITRE investigation timeline (M1) |
+| `GET` | `/api/alerts` | Open/acked/resolved alerts (M1) |
+| `GET/POST` | `/api/alert-rules` | SOC alert-rule management (M1) |
+| `POST` | `/api/alerts/{id}/notify` | SMTP/webhook notification (M1) |
 | `GET` | `/api/graph` | Entity graph (nodes + edges) |
 | `GET` | `/api/intel` | IOC feed + reports |
+| `GET/POST` | `/api/intel/reference`, `/reload` | Bundled reputation feed (M2) |
+| `GET` | `/api/intel/reputation/{value}` | Offline malicious/suspicious/unknown verdict (M2) |
+| `GET` | `/api/geo/lookup?ip=` | Offline IP → geo lookup (M2) |
+| `GET` | `/api/geo/job/{id}[/banner]` | Per-event geo + top regions (M2) |
+| `GET` | `/api/audit/report/{job}/{framework}` | Compliance Markdown report (M2) |
+| `GET` | `/api/assets` | Asset inventory (M2) |
+| `GET` | `/api/ml/{job_id}` | ML model meta + top anomalies (M3) |
+| `GET` | `/api/events/{id}` | Single event detail |
 | `GET` | `/api/policy` | Current privacy policy |
 | `PUT` | `/api/policy` | Update privacy policy |
 | `POST` | `/api/policy/preview` | Preview redaction |
@@ -327,22 +395,24 @@ All endpoints require JWT auth (via `Authorization: Bearer <token>`) except `/ap
 | `POST` | `/api/benchmark/run` | Run benchmark suite |
 | `GET` | `/api/benchmark/results` | Latest benchmark results |
 | `GET` | `/api/samples` | List bundled demo scenarios |
-| `POST` | `/api/stream/start` | Start live log stream |
+| `POST` | `/api/stream/start\|/stop` | Start/stop live log stream (M1) |
+| `GET` | `/api/stream/recent` | Fresh events for the EVENT WALL (M1) |
 
 ---
 
 ## Testing
 
 ```bash
-# Run all 103 tests
+# Backend: 149 unit + integration tests
 .venv\Scripts\python -m pytest           # Windows
 source .venv/bin/activate && pytest      # Linux/Mac
 
-# Run specific module
-.venv\Scripts\python -m pytest tests/test_ioc.py -v
+# Run a specific module
+.venv\Scripts\python -m pytest tests/test_ml.py -v
 
-# With coverage
-.venv\Scripts\python -m pytest --tb=short
+# Frontend: 31 audit e2e (axe on all 14 pages + functional flows)
+cd frontend
+npx playwright test
 ```
 
 ---

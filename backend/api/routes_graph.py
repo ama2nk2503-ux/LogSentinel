@@ -1,4 +1,4 @@
-﻿"""Attack graph builder: entity/interaction graph from events + detections."""
+"""Attack graph builder: entity/interaction graph from events + detections."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -105,4 +105,3 @@ def attack_graph(job_id: str):
         nodes = list(nodes.values())
 
     return {"job_id": job_id, "nodes": nodes, "edges": edges}
-
