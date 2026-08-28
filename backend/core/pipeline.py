@@ -148,6 +148,17 @@ def run_job(job_id: str) -> None:
             stats_update["incidents"] = len(incidents)
         if stats_update:
             jobs.merge_stats(job_id, **stats_update)
+        # Alerting runs isolated: a rule problem must never fail ingestion.
+        alert_stats = {}
+        try:
+            from core.alerts import evaluate_alerts
+            created_alerts = evaluate_alerts(job_id)
+            if created_alerts:
+                alert_stats["alerts"] = len(created_alerts)
+        except Exception as exc:  # noqa: BLE001 — alerting must not fail the job
+            alert_stats["alerts_error"] = f"{type(exc).__name__}: {exc}"
+        if alert_stats:
+            jobs.merge_stats(job_id, **alert_stats)
         from intelligence.aggregator import build_intel
         intel = build_intel(job_id)
         jobs.merge_stats(job_id, intel_indicators=len(intel["indicators"]),

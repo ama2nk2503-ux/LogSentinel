@@ -74,7 +74,7 @@ export default function Dashboard() {
   }
 
   if (error) return <div className="p-8 text-red-400">{error.message}</div>
-  if (!data) return <div className="p-8 text-slate-500 animate-pulse">Loading telemetry…</div>
+  if (!data) return <div className="p-8 text-slate-400">Loading telemetry…</div>
 
   const { job, cards, charts } = data
   const sevData = charts.severity.map((s) => ({ name: s.label, value: s.count }))

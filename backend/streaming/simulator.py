@@ -5,6 +5,7 @@ import random
 from datetime import datetime, timezone
 
 from core import jobs
+from core.alerts import evaluate_alerts
 from core.storage import db
 from detection.correlator import build_incidents
 from detection.engine import evaluate_job
@@ -114,6 +115,7 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
                 await asyncio.to_thread(evaluate_job, job_id)
                 await asyncio.to_thread(build_incidents, job_id)
                 await asyncio.to_thread(build_intel, job_id)
+                await asyncio.to_thread(evaluate_alerts, job_id)
                 total = None
                 with db() as conn:
                     row = conn.execute(

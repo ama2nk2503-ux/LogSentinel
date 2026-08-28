@@ -97,9 +97,56 @@ CREATE TABLE IF NOT EXISTS correlations (
     timeline_json TEXT DEFAULT '[]',
     techniques_json TEXT DEFAULT '[]',
     killchain_json TEXT DEFAULT '{}',
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    status TEXT DEFAULT 'NEW',
+    assignee TEXT DEFAULT '',
+    notes_json TEXT DEFAULT '[]',
+    false_positive INTEGER DEFAULT 0,
+    acknowledged_at TEXT,
+    resolved_at TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_correlations_job ON correlations(job_id);
+
+CREATE TABLE IF NOT EXISTS alert_rules (
+    rule_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    source_type TEXT NOT NULL,
+    severity TEXT DEFAULT 'MEDIUM',
+    threshold INTEGER DEFAULT 1,
+    match_rule_id TEXT,
+    match_category TEXT,
+    min_risk INTEGER DEFAULT 0,
+    min_confidence REAL DEFAULT 0.0,
+    dedup_window_minutes INTEGER DEFAULT 60,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS alerts (
+    id TEXT PRIMARY KEY,
+    alert_rule_id TEXT NOT NULL,
+    job_id TEXT DEFAULT '',
+    source_type TEXT,
+    source_id TEXT,
+    entity TEXT DEFAULT '',
+    entity_type TEXT DEFAULT '',
+    severity TEXT,
+    title TEXT NOT NULL,
+    message TEXT DEFAULT '',
+    risk_score INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'OPEN',
+    dedup_key TEXT,
+    metadata_json TEXT DEFAULT '{}',
+    created_at TEXT,
+    acknowledged_at TEXT,
+    resolved_at TEXT,
+    updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_alerts_status ON alerts(status);
+CREATE INDEX IF NOT EXISTS ix_alerts_rule ON alerts(alert_rule_id);
+CREATE INDEX IF NOT EXISTS ix_alerts_job ON alerts(job_id);
+CREATE INDEX IF NOT EXISTS ix_alerts_dedup ON alerts(dedup_key);
 
 CREATE TABLE IF NOT EXISTS indicators (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,6 +197,26 @@ def db():
         raise
 
 
+# Columns added after the original schema shipped — ALTERed onto pre-existing
+# databases so upgrades are additive (never destructive).
+_COLUMN_MIGRATIONS = [
+    ("correlations", "status", "TEXT DEFAULT 'NEW'"),
+    ("correlations", "assignee", "TEXT DEFAULT ''"),
+    ("correlations", "notes_json", "TEXT DEFAULT '[]'"),
+    ("correlations", "false_positive", "INTEGER DEFAULT 0"),
+    ("correlations", "acknowledged_at", "TEXT"),
+    ("correlations", "resolved_at", "TEXT"),
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, column, decl in _COLUMN_MIGRATIONS:
+        existing = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
+
 def init_db() -> None:
     with db() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)

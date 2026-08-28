@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 1440
     default_admin_password: str = "changeme"
+    # Alert notifications (optional). Leave empty to disable a channel.
+    webhook_url: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
 
 
 settings = Settings()

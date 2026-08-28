@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes_auth import router as auth_router
+from api.routes_alerts import router as alerts_router
 from api.routes_detections import router as detections_router
 from api.routes_dashboard import router as dashboard_router
 from api.routes_events import router as events_router
@@ -18,6 +19,7 @@ from api.routes_stream import router as stream_router
 from api.routes_threats import router as threats_router
 from api.routes_upload import router as upload_router
 from core.auth import decode_token, seed_admin
+from core.alerts import seed_alert_rules
 from core.config import settings
 from core.storage import init_db
 
@@ -63,12 +65,14 @@ app.include_router(samples_router, prefix="/api")
 app.include_router(graph_router, prefix="/api")
 app.include_router(query_router, prefix="/api")
 app.include_router(benchmark_router, prefix="/api")
+app.include_router(alerts_router, prefix="/api")
 
 
 @app.on_event("startup")
 def startup() -> None:
     init_db()
     seed_admin()
+    seed_alert_rules()
 
 
 @app.get("/api/health")

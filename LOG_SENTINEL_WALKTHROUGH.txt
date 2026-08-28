@@ -434,12 +434,67 @@ deterministic -- same input, same output, every time.
       Then start fresh. (You can also just use the already-running backend.)
 
   Tests:
-      Backend : .venv\Scripts\python -m pytest             (103 tests)
-      Frontend: cd frontend; npx playwright test            (20 audit tests:
-                axe accessibility on all 10 pages + functional flows:
+      Backend : .venv\Scripts\python -m pytest             (120 tests)
+      Frontend: cd frontend; npx playwright test            (25 audit tests:
+                axe accessibility on all 12 pages + functional flows:
                 login, upload drag-drop/sample, dashboard export,
                 explorer dialog/Escape + pagination, threats/intel/graph,
-                benchmark run, mobile sidebar)
+                alert ack + triage status/timeline modal, event-wall
+                start/stop, benchmark run, mobile sidebar)
+
+--------------------------------------------------------------------------------
+9b. MILESTONE 1 — LIVE SOC OPS (alerting, triage, real-time wall, timeline)
+--------------------------------------------------------------------------------
+
+  New backend capability (deterministic + explainable, no ML required):
+
+    ALERTING ENGINE (backend/core/alerts.py, rules/alert_rules.yaml)
+      - Two alert classes: incidents (from the correlator) and IOC
+        matches (global indicator watchlist), each gated on min_risk /
+        min_confidence, deduped on rule_id|entity within a dedup window.
+      - Alerts persist to SQLite (alerts table created via column
+        migrations in core/storage.py), with lifecycle: open ->
+        acked -> resolved, plus false-positive feedback that halves the
+        underlying incident's risk and appends an explainable reason.
+      - POST_NOTIFY delivers on escalation via SMTP/webhook (config
+        LOGSENTINEL_WEBHOOK_URL / LOGSENTINEL_SMTP_*); all alerting is
+        wrapped so ingestion NEVER fails on notify errors.
+      - Seed rules: ALERT_CRITICAL_INCIDENT (risk >= 80),
+        ALERT_HIGH_INCIDENT (risk >= 51), ALERT_BRUTE_FORCE,
+        ALERT_SQL_INJECTION, ALERT_TRAVERSAL, ALERT_MALWARE,
+        ALERT_HIGH_CONF_IOC (confidence >= 0.9).
+      - Managed via /api/alert-rules (list/create/update/reload) and
+        /api/alerts (list by status+severity, view, ack, resolve,
+        false-positive, notify).
+
+    INCIDENT TRIAGE (backend/core/triage.py + routes_threats.py)
+      - Workflow states NEW -> ACKNOWLEDGED -> IN_PROGRESS -> ESCALATED
+        -> RESOLVED (or FALSE_POSITIVE), with analyst assignment (via
+        a global logins table) and an append-only triage-note trail.
+      - /api/threats/triage/summary exposes state distribution for a
+        SOC queue view.
+
+    INVESTIGATION TIMELINE (backend/core/timeline.py)
+      - /api/incidents/{id}/timeline clusters an incident's correlated
+        evidence into MITRE ATT&CK tactics (from attack_mapping.json),
+        producing per-phase entry counts for a Gantt-style visual.
+
+    EVENT WALL (backend/api/routes_stream.py + frontend/src/pages/Live.jsx)
+      - GET /api/stream/recent returns the freshest N events from the
+        active stream job (falls back to the newest ingested job);
+        the new EVENT WALL page polls every 1.5s with severity color
+        bars, filter-agnostic live feed, and auto-scroll.
+
+  New frontend:
+      - ALERTS page (frontend/src/pages/Alerts.jsx): tabbed status
+        queue with counts, severity filter, per-alert ACK / RESOLVE /
+        FALSE-POSITIVE / NOTIFY actions + notify result banner, and an
+        ALERT RULES management panel (enable/disable/reload/create).
+      - THREATS page upgraded (frontend/src/pages/Threats.jsx): triage
+        status dropdown, analyst assignment, add-note form, SLA-age
+        badge, and a VIEW TIMELINE modal rendering the ATT&CK phase
+        timeline as scaled bars with expandable evidence per phase.
+      - EVENT WALL page + ALERTS/EVENT WALL sidebar + routes.
 
 --------------------------------------------------------------------------------
 10. PROJECT LAYOUT CHEAT-SHEET
@@ -448,11 +503,14 @@ deterministic -- same input, same output, every time.
   backend/
       main.py                  FastAPI app, JWT middleware, route registration
       api/routes_*.py          REST handlers (auth, upload, jobs, dashboard,
-                               events, detections, threats, graph, intel, ioc,
-                               policy, export, report/pdf, query, samples,
-                               benchmark, stream)
+                               events, detections, threats, alerts, graph,
+                               intel, ioc, policy, export, report/pdf, query,
+                               samples, benchmark, stream)
       core/                    config, SQLite storage (WAL), auth, jobs,
-                               ingest, 17-stage pipeline, benchmark harness
+                               ingest, 17-stage pipeline, benchmark harness,
+                               alerting engine (alerts.py), triage
+                               workflow (triage.py), investigation
+                               timeline (timeline.py)
       parsers/                 detector (confidence scoring) + registry +
                                syslog/apache/firewall/windows/structured/
                                generic parsers
@@ -473,15 +531,15 @@ deterministic -- same input, same output, every time.
                                AuthContext, QueryProvider, useQueryParam,
                                useDebouncedValue
       pages/                   Login, Upload, Dashboard, Explorer, Threats,
-                               Graph, Intel, Privacy, ExportPage, Benchmark,
-                               Demo
+                               Alerts, Live, Graph, Intel, Privacy,
+                               ExportPage, Benchmark, Demo
 
-  rules/                       YAML threat rules + MITRE mapping + default
-                               privacy policy YAML
+  rules/                       YAML threat rules + alert rules + MITRE
+                               mapping + default privacy policy YAML
   samples/                     scenario1-4 demo logs + labeled/ ground truth
                                (benchmark fixtures)
   specs/                       design.md + wow_features.spec.md (EARS)
-  tests/                       103 unit/integration tests
+  tests/                       120 unit/integration tests
 
 ================================================================================
 END OF WALKTHROUGH

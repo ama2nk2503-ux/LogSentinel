@@ -106,7 +106,7 @@ export default function Graph() {
 
       {jobId && isLoading && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-sm text-slate-500 animate-pulse">Loading graph...</div>
+          <div className="text-sm text-slate-400">Loading graph...</div>
         </div>
       )}
 

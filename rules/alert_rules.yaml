@@ -1,0 +1,66 @@
+# LogSentinel alert rules — deterministic + explainable by design.
+# source_type: detection (rule matches grouped per entity), incident (risk-gated),
+#              ioc (high-confidence watchlist indicators).
+# reload via POST /api/alert-rules/reload (resets the table to this file).
+
+rules:
+
+  - rule_id: ALERT_CRITICAL_INCIDENT
+    name: Critical Incident Detected
+    description: Raise an alert whenever a correlated incident reaches a CRITICAL risk gate (>=80).
+    source_type: incident
+    severity: CRITICAL
+    min_risk: 80
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_HIGH_INCIDENT
+    name: High-Risk Incident Detected
+    description: Raise an alert whenever a correlated incident clears a HIGH risk gate (>=51).
+    source_type: incident
+    severity: HIGH
+    min_risk: 51
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_BRUTE_FORCE
+    name: Brute Force Attempt
+    description: Alert when the brute-force rule fires for an entity.
+    source_type: detection
+    severity: HIGH
+    match_rule_id: BRUTE_FORCE_001
+    threshold: 1
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_SQL_INJECTION
+    name: SQL Injection Attempt
+    description: Alert on SQL injection detections.
+    source_type: detection
+    severity: HIGH
+    match_rule_id: WEB_SQLI_001
+    threshold: 1
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_TRAVERSAL
+    name: Path Traversal Attempt
+    description: Alert on directory-traversal detections.
+    source_type: detection
+    severity: MEDIUM
+    match_rule_id: WEB_TRAVERSAL_001
+    threshold: 1
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_MALWARE
+    name: Malware-Like Activity
+    description: Alert when malware-category detections fire for an entity.
+    source_type: detection
+    severity: HIGH
+    match_category: Malware
+    threshold: 1
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_HIGH_CONF_IOC
+    name: High-Confidence Indicator
+    description: Alert when a watchlist indicator carries confidence >= 0.9.
+    source_type: ioc
+    severity: HIGH
+    min_confidence: 0.9
+    dedup_window_minutes: 60

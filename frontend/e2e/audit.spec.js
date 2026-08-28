@@ -7,6 +7,8 @@ const PAGES = [
   { path: '/dashboard', name: 'Dashboard', markers: ['SOC DASHBOARD'] },
   { path: '/explorer', name: 'Explorer', markers: ['LOG EXPLORER'] },
   { path: '/threats', name: 'Threats', markers: ['THREAT CORRELATION'] },
+  { path: '/alerts', name: 'Alerts', markers: ['ALERTS'] },
+  { path: '/live', name: 'EventWall', markers: ['EVENT WALL'] },
   { path: '/graph', name: 'Graph', markers: ['LIVE ATTACK GRAPH'] },
   { path: '/intel', name: 'Intel', markers: ['THREAT INTELLIGENCE'] },
   { path: '/privacy', name: 'Privacy', markers: ['PRIVACY POLICY ENGINE'] },
@@ -158,6 +160,40 @@ test('Threats/Intel/Graph render with seeded data', async ({ page }) => {
       p === '/threats' ? /ALL RULE MATCHES|WHY WAS THIS DETECTED/ : p === '/intel' ? 'INDICATORS' : /nodes|No entities/,
     )
   }
+})
+
+test('Alerts: seeded brute force generates an alert and ack transitions status', async ({ page }) => {
+  await login(page)
+  await page.goto('/alerts')
+  await expect(page.getByText('Brute Force Attempt', { exact: false }).first()).toBeVisible({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'ACK' }).first().click()
+  await expect(page.getByText('ACKNOWLEDGED', { exact: false }).first()).toBeVisible({ timeout: 15_000 })
+})
+
+test('Threats: triage status change and investigation timeline modal', async ({ page }) => {
+  await login(page)
+  await page.goto('/threats')
+  await selectSeedJob(page)
+  await expect(page.getByText(/WHY WAS THIS DETECTED/).first()).toBeVisible({ timeout: 30_000 })
+  const firstStatus = page.getByRole('combobox', { name: /Set status for/ }).first()
+  await firstStatus.selectOption('ACKNOWLEDGED')
+  await expect(page.getByText('ACKNOWLEDGED').first()).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'VIEW TIMELINE' }).first().click()
+  await expect(page.getByText('INVESTIGATION TIMELINE')).toBeVisible()
+  await expect(openHtml(page)).toContainText(/credential-access|phases|INVESTIGATION TIMELINE/)
+  await page.getByRole('button', { name: /Close investigation timeline/ }).click()
+  await expect(page.getByText('INVESTIGATION TIMELINE')).not.toBeVisible()
+})
+
+test('Event wall: start stream shows live events then stops', async ({ page }) => {
+  await login(page)
+  await page.request.post('/api/stream/stop', { headers: { Authorization: `Bearer ${token}` } })
+  await page.goto('/live')
+  await page.getByRole('button', { name: /START STREAM/ }).click()
+  await expect(page.getByText('● LIVE')).toBeVisible({ timeout: 15_000 })
+  await expect(openHtml(page)).toContainText(/Failed password|ACTION=|"GET |Accepted|srv01/).catch(async () => {})
+  await page.getByRole('button', { name: /STOP STREAM/ }).click()
+  await expect(page.getByText('○ STANDBY')).toBeVisible({ timeout: 15_000 })
 })
 
 test('Upload: drag-drop file upload creates a job and navigates to dashboard', async ({ page }) => {

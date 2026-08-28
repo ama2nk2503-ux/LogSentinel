@@ -8,6 +8,8 @@ const links = [
   { to: '/dashboard', label: 'DASHBOARD' },
   { to: '/explorer', label: 'LOG EXPLORER' },
   { to: '/threats', label: 'THREATS' },
+  { to: '/alerts', label: 'ALERTS' },
+  { to: '/live', label: 'EVENT WALL' },
   { to: '/graph', label: 'ATTACK GRAPH' },
   { to: '/intel', label: 'INTEL' },
   { to: '/privacy', label: 'PRIVACY' },

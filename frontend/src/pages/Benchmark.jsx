@@ -64,7 +64,7 @@ export default function Benchmark() {
     return (
       <div className="p-4 md:p-6 lg:p-8">
         <PageHeader title="BENCHMARK" />
-        <div className="mt-6 text-sm text-slate-500 animate-pulse">Loading…</div>
+        <div className="mt-6 text-sm text-slate-400">Loading…</div>
       </div>
     )
   }

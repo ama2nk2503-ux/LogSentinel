@@ -7,6 +7,8 @@ import Login from './pages/Login.jsx'
 const Upload = lazy(() => import('./pages/Upload.jsx'))
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
 const Explorer = lazy(() => import('./pages/Explorer.jsx'))
+const Alerts = lazy(() => import('./pages/Alerts.jsx'))
+const Live = lazy(() => import('./pages/Live.jsx'))
 const Threats = lazy(() => import('./pages/Threats.jsx'))
 const Graph = lazy(() => import('./pages/Graph.jsx'))
 const Intel = lazy(() => import('./pages/Intel.jsx'))
@@ -18,7 +20,7 @@ const Demo = lazy(() => import('./pages/Demo.jsx'))
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-64">
-      <div className="text-sm text-slate-500 animate-pulse">Loading...</div>
+      <div className="text-sm text-slate-400">Loading...</div>
     </div>
   )
 }
@@ -35,6 +37,8 @@ export default function App() {
           <Route path="/dashboard/:jobId" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
           <Route path="/explorer" element={<Suspense fallback={<PageLoader />}><Explorer /></Suspense>} />
           <Route path="/threats" element={<Suspense fallback={<PageLoader />}><Threats /></Suspense>} />
+          <Route path="/alerts" element={<Suspense fallback={<PageLoader />}><Alerts /></Suspense>} />
+          <Route path="/live" element={<Suspense fallback={<PageLoader />}><Live /></Suspense>} />
           <Route path="/graph" element={<Suspense fallback={<PageLoader />}><Graph /></Suspense>} />
           <Route path="/intel" element={<Suspense fallback={<PageLoader />}><Intel /></Suspense>} />
           <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
