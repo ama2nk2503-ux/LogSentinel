@@ -9,11 +9,13 @@
   --color-border-subtle: #12121a;
   --color-text-primary: #e2e8f0;
   --color-text-secondary: #94a3b8;
-  --color-text-muted: #6b7280;
+  --color-text-muted: #8b98ab;
   --color-accent: #34d399;
   --color-accent-dim: rgba(52, 211, 153, 0.1);
   --color-danger: #ef4444;
   --color-warning: #eab308;
+  --color-slate-500: #8b98ab;
+  --color-slate-600: #76849a;
   --color-slate-700: #1a1a24;
   --color-slate-800: #12121a;
   --color-slate-900: #0c0c12;
@@ -33,4 +35,52 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-bg-elevated);
   border-radius: 4px;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-slate-900/60 border border-slate-800 rounded p-4;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded tracking-widest text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply bg-emerald-500 hover:bg-emerald-400 text-emerald-950;
+  }
+  .btn-ghost {
+    @apply border border-slate-700 hover:border-slate-500 text-slate-300;
+  }
+  .btn-danger {
+    @apply border border-red-700 text-red-300 hover:bg-red-950/40;
+  }
+  .input {
+    @apply bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-emerald-600;
+  }
+  .label {
+    @apply text-[10px] tracking-widest text-slate-500;
+  }
+  .alert-error {
+    @apply text-sm text-red-400 border border-red-800/60 bg-red-950/30 rounded p-3;
+  }
+  .table-header {
+    @apply bg-slate-900/80 text-slate-500 py-2 px-3 text-left font-normal;
+  }
+  .table-cell {
+    @apply px-3 py-1.5 border-t border-slate-800/60;
+  }
 }

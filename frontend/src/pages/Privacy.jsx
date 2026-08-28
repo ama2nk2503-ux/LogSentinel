@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import PageHeader from '../components/PageHeader.jsx'
 import { api, classNames } from '../lib/api.js'
 
 const CATEGORIES = ['EMAIL', 'PHONE', 'PASSWORD', 'API_KEY', 'TOKEN',
@@ -33,12 +34,7 @@ export default function Privacy() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-3xl">
-            <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-1">PRIVACY POLICY ENGINE</h1>
-            <p className="text-xs text-slate-500 mb-6">
-                Controls how each sensitive category leaves this system. Applied at every output surface
-                (API responses · exports · reports · graph · search). IPs are security indicators by
-                default and are governed separately.
-            </p>
+            <PageHeader title="PRIVACY POLICY ENGINE" subtitle="Controls how each sensitive category leaves this system. Applied at every output surface (API responses · exports · reports · graph · search). IPs are security indicators by default and are governed separately." />
 
             <div className="border border-slate-800 rounded overflow-hidden">
                 <table className="w-full text-xs">
@@ -56,6 +52,7 @@ export default function Privacy() {
                                 <td className="px-4 py-2">
                                     <select value={policy[cat] || 'REDACT'}
                                             onChange={(e) => setPolicy({ ...policy, [cat]: e.target.value })}
+                                            aria-label={`Privacy action for ${cat}`}
                                             className="bg-slate-950 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-emerald-600">
                                         {ACTIONS.map((a) => <option key={a}>{a}</option>)}
                                     </select>
@@ -72,7 +69,7 @@ export default function Privacy() {
 
             <div className="mt-4 flex items-center gap-3">
                 <button onClick={save}
-                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded tracking-widest text-sm">
+                        className="btn btn-primary px-6 py-2">
                     SAVE POLICY
                 </button>
                 {saved && <span className="text-xs text-emerald-400">✓ saved & hot-reloaded</span>}

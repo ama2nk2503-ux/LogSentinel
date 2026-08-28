@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import { apiDownload } from '../lib/api.js'
 
 const FORMATS = [
@@ -31,10 +32,7 @@ export default function ExportPage() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-3xl">
-            <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-1">SIEM EXPORT</h1>
-            <p className="text-xs text-slate-500 mb-6">
-                Every payload passes the privacy policy engine and structural validation before download.
-            </p>
+            <PageHeader title="SIEM EXPORT" subtitle="Every payload passes the privacy policy engine and structural validation before download." />
 
             <JobPicker value={jobId} onChange={setJobId} />
 
@@ -52,12 +50,12 @@ export default function ExportPage() {
             <button
                 onClick={() => { if (jobId) downloadMutation.mutate() }}
                 disabled={!jobId || downloadMutation.isPending}
-                className={`mt-6 px-8 py-3 rounded tracking-widest text-sm font-bold ${
-                    jobId && !downloadMutation.isPending ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
+                className={`btn mt-6 px-8 py-3 ${
+                    jobId && !downloadMutation.isPending ? 'btn-primary' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>
                 {downloadMutation.isPending ? 'DOWNLOADING…' : `↓ DOWNLOAD ${fmt.toUpperCase()}`}
             </button>
 
-            {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
+            {error && <div className="mt-3 text-sm text-red-400" role="alert">{error}</div>}
 
             {jobId && (
                 <div className="mt-4 text-[11px] text-slate-600">

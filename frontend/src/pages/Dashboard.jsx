@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
+import { memo } from 'react'
 import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { api } from '../lib/api.js'
+import { api, apiDownload } from '../lib/api.js'
+import PageHeader from '../components/PageHeader.jsx'
 
 const SEV_COLORS = { LOW: '#3b82f6', MEDIUM: '#eab308', HIGH: '#f97316', CRITICAL: '#ef4444', UNKNOWN: '#475569' }
 const PIE_COLORS = ['#10b981', '#3b82f6', '#a855f7', '#f97316', '#ef4444', '#14b8a6', '#eab308']
-
-import { memo } from 'react'
 
 const Card = memo(function Card({ label, value, tone = 'slate' }) {
   const tones = {
@@ -34,7 +34,7 @@ const ChartBox = memo(function ChartBox({ title, children }) {
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded p-4">
       <div className="text-[10px] tracking-widest text-slate-500 mb-3">{title}</div>
-      <div className="h-48 md:h-56">{children}</div>
+      <div className="h-48 md:h-56" role="img" aria-label={title}>{children}</div>
     </div>
   )
 })
@@ -42,6 +42,7 @@ const ChartBox = memo(function ChartBox({ title, children }) {
 export default function Dashboard() {
   const { jobId: routeJobId } = useParams()
   const [jobId, setJobId] = useState(routeJobId || '')
+  const [exportError, setExportError] = useState('')
 
   useEffect(() => {
     if (routeJobId) setJobId(routeJobId)
@@ -54,10 +55,18 @@ export default function Dashboard() {
     refetchInterval: 2000,
   })
 
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      await apiDownload(`/export/${jobId}?format=json`, 'logsentinel.json')
+      setExportError('')
+    },
+    onError: (e) => setExportError(String(e.message || e)),
+  })
+
   if (!jobId) {
     return (
       <div className="p-4 md:p-6 lg:p-8">
-        <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-5">SOC DASHBOARD</h1>
+        <PageHeader title="SOC DASHBOARD" />
         <div className="text-sm text-slate-500 mb-3">Select a processed dataset:</div>
         <JobPicker value={jobId} onChange={setJobId} />
       </div>
@@ -83,12 +92,14 @@ export default function Dashboard() {
         )}
         <span>STAGE: <b className="text-slate-300">{job.stage}</b></span>
         <button
-          onClick={() => window.open(`/api/export/${job.id}?format=json`, '_blank')}
-          className="ml-auto px-3 py-1 text-[11px] tracking-wider border border-emerald-700 text-emerald-400 hover:bg-emerald-500/10 rounded"
+          onClick={() => exportMutation.mutate()}
+          disabled={exportMutation.isPending}
+          className="ml-auto px-3 py-1 text-[11px] tracking-wider border border-emerald-700 text-emerald-400 hover:bg-emerald-500/10 rounded disabled:opacity-40"
         >
-          EXPORT JSON ↓
+          {exportMutation.isPending ? 'EXPORTING…' : 'EXPORT JSON ↓'}
         </button>
       </div>
+      {exportError && <div className="mb-4 text-xs text-red-400">{exportError}</div>}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
         <Card label="TOTAL EVENTS" value={cards.total_events} />
@@ -125,8 +136,8 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                <XAxis dataKey="minute" tick={{ fill: '#6b7280', fontSize: 9 }} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 9 }} allowDecimals={false} />
+                <XAxis dataKey="minute" tick={{ fill: '#94a3b8', fontSize: 9 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151' }} />
                 <Area type="monotone" dataKey="count" stroke="#10b981" fill="url(#g1)" strokeWidth={2} />
               </AreaChart>
@@ -139,7 +150,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart layout="vertical" data={charts.top_ips.map((t) => ({ ip: t.label, n: t.count }))}>
                 <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 9 }} allowDecimals={false} />
+                <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 9 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="ip" width={110} tick={{ fill: '#94a3b8', fontSize: 9 }} />
                 <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151' }} />
                 <Bar dataKey="n" fill="#3b82f6" radius={[0, 3, 3, 0]} />
@@ -170,7 +181,7 @@ export default function Dashboard() {
               <BarChart data={charts.ioc_types.map((t) => ({ type: t.label.toUpperCase(), n: t.count }))}>
                 <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
                 <XAxis dataKey="type" tick={{ fill: '#94a3b8', fontSize: 9 }} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 9 }} allowDecimals={false} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 9 }} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151' }} />
                 <Bar dataKey="n" fill="#a855f7" radius={[3, 3, 0, 0]} />
               </BarChart>
@@ -183,7 +194,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={charts.threat_types.map((t) => ({ t: t.label, n: t.count }))} layout="vertical">
                 <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 9 }} allowDecimals={false} />
+                <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 9 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="t" width={110} tick={{ fill: '#fca5a5', fontSize: 9 }} />
                 <Tooltip contentStyle={{ background: '#1f2937', border: '1px solid #374151' }} />
                 <Bar dataKey="n" fill="#ef4444" radius={[0, 3, 3, 0]} />

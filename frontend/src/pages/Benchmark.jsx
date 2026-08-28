@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { memo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import PageHeader from '../components/PageHeader.jsx'
 import { api } from '../lib/api.js'
 
 const Bar = memo(function Bar({ value }) {
@@ -62,7 +63,7 @@ export default function Benchmark() {
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 lg:p-8">
-        <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-1">BENCHMARK</h1>
+        <PageHeader title="BENCHMARK" />
         <div className="mt-6 text-sm text-slate-500 animate-pulse">Loading…</div>
       </div>
     )
@@ -70,17 +71,13 @@ export default function Benchmark() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-1">BENCHMARK</h1>
-      <p className="text-xs text-slate-500 mb-5">
-        Every metric is computed live from labeled fixtures — nothing is hardcoded.
-        Precision/recall measured against ground-truth annotations in <code>samples/labeled/</code>.
-      </p>
+      <PageHeader title="BENCHMARK" subtitle="Every metric is computed live from labeled fixtures — nothing is hardcoded. Precision/recall measured against ground-truth annotations in samples/labeled/." />
 
       <button onClick={run} disabled={running}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded tracking-widest text-sm font-bold">
+              className="btn btn-primary px-6 py-2.5">
         {running ? 'RUNNING SUITE…' : '▶ RUN BENCHMARK'}
       </button>
-      {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
+      {error && <div className="mt-3 text-sm text-red-400" role="alert">{error}</div>}
 
       {!r && !running && (
         <div className="mt-6 text-sm text-slate-500">No benchmark has been run yet.</div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
 import { api, classNames } from '../lib/api.js'
 
@@ -23,7 +24,7 @@ export default function Threats() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-5">THREAT CORRELATION</h1>
+      <PageHeader title="THREAT CORRELATION" />
       <div className="mb-5"><JobPicker value={jobId} onChange={setJobId} /></div>
 
       {!jobId && <div className="text-sm text-slate-500">Select a processed dataset.</div>}
@@ -150,6 +151,10 @@ function KillChain({ killchain }) {
           return (
             <button key={tactic}
                     onClick={() => setOpen(open === tactic ? null : (isHit ? tactic : open))}
+                    aria-expanded={isHit ? open === tactic : undefined}
+                    aria-label={isHit
+                      ? `${tactic} attack stage — ${hit.techniques.map((t) => t.name).join(', ')}`
+                      : `${tactic} attack stage (no evidence)`}
                     title={isHit ? hit.techniques.map((t) => `${t.id} ${t.name}`).join('\n') : tactic}
                     className={classNames(
                       'relative flex-1 min-w-[54px] px-1 py-1.5 rounded-sm text-[8px] font-bold tracking-wide transition-all',

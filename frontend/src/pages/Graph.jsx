@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import { api } from '../lib/api.js'
 
 const SEV_COLOR = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#3b82f6' }
@@ -89,7 +90,7 @@ export default function Graph() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 h-full flex flex-col">
-      <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-4">LIVE ATTACK GRAPH</h1>
+      <PageHeader title="LIVE ATTACK GRAPH" />
       <div className="flex gap-3 items-center mb-4">
         <JobPicker value={jobId} onChange={setJobId} />
         {graph && (
@@ -120,6 +121,8 @@ export default function Graph() {
           {/* full-width canvas — the entity card floats on top, never squeezing it */}
           <div
             ref={containerRef}
+            role="img"
+            aria-label={`Attack graph with ${graph.nodes.length} nodes and ${graph.edges.length} links`}
             style={{
               position: 'absolute',
               inset: 0,

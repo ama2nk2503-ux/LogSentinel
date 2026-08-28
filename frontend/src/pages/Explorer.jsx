@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
 import { api, classNames } from '../lib/api.js'
 import useQueryParam from '../lib/useQueryParam.js'
+import useDebouncedValue from '../lib/useDebouncedValue.js'
 
 const SEV_STYLE = {
   LOW: 'text-blue-400 border-blue-800',
@@ -20,14 +22,18 @@ export default function Explorer() {
   const [page, setPage] = useQueryParam('page', '1')
   const [selected, setSelected] = useState(null)
   const [detail, setDetail] = useState(null)
+  const lastFocused = useRef(null)
+
+  const debouncedQ = useDebouncedValue(q)
+  const debouncedThreat = useDebouncedValue(threat)
 
   const { data } = useQuery({
-    queryKey: ['events', jobId, q, severity, threat, page],
+    queryKey: ['events', jobId, debouncedQ, debouncedThreat, severity, page],
     queryFn: () => {
       const params = new URLSearchParams({ job_id: jobId, page: String(page), page_size: '50' })
-      if (q) params.set('q', q)
+      if (debouncedQ) params.set('q', debouncedQ)
       if (severity) params.set('severity', severity)
-      if (threat) params.set('threat', threat)
+      if (debouncedThreat) params.set('threat', debouncedThreat)
       return api(`/events?${params}`)
     },
     enabled: !!jobId,
@@ -36,29 +42,37 @@ export default function Explorer() {
   useEffect(() => { setPage('1'); setSelected(null); setDetail(null) }, [jobId])
 
   async function openDetail(eventId) {
+    lastFocused.current = document.activeElement
     setSelected(eventId)
     try { setDetail(await api(`/events/${eventId}`)) } catch { setDetail(null) }
+  }
+
+  function closeDetail() {
+    setSelected(null)
+    setDetail(null)
+    lastFocused.current?.focus?.()
   }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-5">LOG EXPLORER</h1>
+      <PageHeader title="LOG EXPLORER" />
 
       <div className="flex flex-wrap gap-3 items-center mb-4">
         <JobPicker value={jobId} onChange={setJobId} />
         <input
           value={q} onChange={(e) => setQ(e.target.value)} placeholder="search ip / user / message…"
-          className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs w-full md:w-64 focus:outline-none focus:border-emerald-600"
+          aria-label="Search events"
+          className="input w-full md:w-64"
         />
         <select value={severity} onChange={(e) => setSeverity(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs">
+                aria-label="Severity filter" className="input">
           <option value="">all severities</option>
           {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((s) => <option key={s}>{s}</option>)}
         </select>
         <input value={threat} onChange={(e) => setThreat(e.target.value)} placeholder="threat type"
-               className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs w-full md:w-40" />
+               aria-label="Threat type filter" className="input w-full md:w-40" />
       </div>
 
       {!jobId && <div className="text-sm text-slate-500">Select a processed dataset to explore events.</div>}
@@ -81,7 +95,8 @@ export default function Explorer() {
                   <tr key={e.id}
                       onClick={() => openDetail(e.event_id)}
                       tabIndex={0}
-                      onKeyDown={(ev) => { if (ev.key === 'Enter') openDetail(e.event_id) }}
+                      aria-label={`View details for event from ${e.source || 'unknown'} at ${e.ts || ''}`}
+                      onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openDetail(e.event_id) } }}
                       className={classNames(
                         'cursor-pointer border-t border-slate-800/60 hover:bg-slate-800/30',
                         selected === e.event_id && 'bg-emerald-500/10',
@@ -110,7 +125,7 @@ export default function Explorer() {
           </div>
 
           <div className="flex justify-between items-center mt-3 text-xs text-slate-500">
-            <span>{data.total} events</span>
+            <span aria-live="polite">{data.total} events</span>
             <div className="flex gap-2">
               <button disabled={Number(page) <= 1} onClick={() => setPage(String(Number(page) - 1))}
                       className="px-3 py-1 border border-slate-700 rounded disabled:opacity-30 hover:border-slate-500">◀ PREV</button>
@@ -120,7 +135,7 @@ export default function Explorer() {
             </div>
           </div>
 
-          {detail && <RawNormalized detail={detail} onClose={() => { setSelected(null); setDetail(null) }} />}
+          {detail && <RawNormalized detail={detail} onClose={closeDetail} />}
         </>
       )}
     </div>
@@ -138,11 +153,26 @@ function Chip({ children, tone = 'slate' }) {
 }
 
 function RawNormalized({ detail, onClose }) {
+  const panelRef = useRef(null)
+  const titleId = useId()
+
+  useEffect(() => {
+    panelRef.current?.focus()
+  }, [])
+
   return (
-    <div className="mt-5 border border-emerald-900/60 rounded-lg overflow-hidden">
+    <div
+      ref={panelRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
+      className="mt-5 border border-emerald-900/60 rounded-lg overflow-hidden outline-none"
+    >
       <div className="bg-emerald-900/20 px-4 py-2 flex justify-between items-center">
-        <span className="text-xs tracking-widest text-emerald-400">EVENT DETAIL — RAW vs NORMALIZED</span>
-        <button onClick={onClose} className="text-xs text-slate-400 hover:text-white">✕ close</button>
+        <span id={titleId} className="text-xs tracking-widest text-emerald-400">EVENT DETAIL — RAW vs NORMALIZED</span>
+        <button onClick={onClose} aria-label="Close event detail" className="text-xs text-slate-400 hover:text-white">✕ close</button>
       </div>
       <div className="grid md:grid-cols-2 gap-4 p-4 bg-slate-950/60">
         <div>

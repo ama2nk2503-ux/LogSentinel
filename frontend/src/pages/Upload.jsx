@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, classNames } from '../lib/api.js'
+import PageHeader from '../components/PageHeader.jsx'
+import { api, apiForm, apiText, classNames } from '../lib/api.js'
 
 const ACCEPT = '.log,.txt,.json,.csv,.xml'
 
@@ -20,9 +21,7 @@ export default function Upload() {
     try {
       const fd = new FormData()
       Array.from(fileList).forEach((f) => fd.append('files', f))
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      if (!res.ok) throw new Error(await res.text())
-      const data = await res.json()
+      const data = await apiForm('/upload', fd)
       navigate(`/dashboard/${data.jobs[0].job_id}`)
     } catch (e) {
       setError(String(e.message || e))
@@ -57,7 +56,7 @@ export default function Upload() {
   const runSample = useCallback(async (name) => {
     setBusy(true); setError('')
     try {
-      const text = await fetch(`/api/samples/${encodeURIComponent(name)}`).then((r) => r.text())
+      const text = await apiText(`/samples/${encodeURIComponent(name)}`)
       const data = await api('/paste', {
         method: 'POST',
         body: JSON.stringify({ text, name }),
@@ -72,12 +71,15 @@ export default function Upload() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto">
-      <h1 className="text-xl tracking-[0.25em] text-emerald-400 mb-1">UPLOAD CYBER LOGS</h1>
-      <p className="text-xs text-slate-500 mb-6">Universal ingestion · format auto-detection · SIEM-ready intelligence</p>
+      <PageHeader title="UPLOAD CYBER LOGS" subtitle="Universal ingestion · format auto-detection · SIEM-ready intelligence" />
 
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload log files — click or drag and drop log files here"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.current?.click() } }}
         className={classNames(
-          'border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors',
+          'border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors focus-visible:border-emerald-400',
           dragging ? 'border-emerald-400 bg-emerald-400/10' : 'border-slate-700 hover:border-slate-500 bg-slate-900/40',
         )}
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
@@ -85,7 +87,7 @@ export default function Upload() {
         onDrop={(e) => { e.preventDefault(); setDragging(false); uploadFiles(e.dataTransfer.files) }}
         onClick={() => fileInput.current?.click()}
       >
-        <div className="text-4xl mb-3">🛡️</div>
+        <div className="text-4xl mb-3" aria-hidden="true">🛡️</div>
         <div className="text-slate-300 mb-2">{busy ? 'Processing…' : 'Drag & Drop log files here'}</div>
         <div className="text-xs text-slate-500 tracking-widest">LOG · TXT · JSON · CSV · XML</div>
         <input
@@ -98,14 +100,15 @@ export default function Upload() {
         />
       </div>
 
-      {error && <div className="mt-4 text-sm text-red-400 border border-red-800/60 bg-red-950/30 rounded p-3">{error}</div>}
+      {error && <div className="mt-4 alert-error" role="alert">{error}</div>}
 
       <div className="mt-6">
-        <div className="text-xs tracking-widest text-slate-500 mb-2">OR PASTE RAW LOGS</div>
+        <div className="label mb-2">OR PASTE RAW LOGS</div>
         <textarea
           value={pasteText}
           onChange={(e) => setPasteText(e.target.value)}
           rows={7}
+          aria-label="Raw log text to paste"
           placeholder={'Aug 25 10:30:01 server sshd: Failed password for admin from 185.23.45.67'}
           className="w-full bg-slate-950/70 border border-slate-800 rounded p-3 text-xs text-slate-300 focus:outline-none focus:border-emerald-600 font-mono"
         />
@@ -113,14 +116,14 @@ export default function Upload() {
           <button
             onClick={uploadPaste}
             disabled={busy || !pasteText.trim()}
-            className="px-5 py-2 text-sm tracking-wider bg-emerald-600/90 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded"
+            className="btn btn-primary px-5 py-2"
           >
             PROCESS PASTED LOGS
           </button>
           <button
             onClick={loadSamples}
             disabled={busy}
-            className="px-5 py-2 text-sm tracking-wider border border-slate-700 hover:border-slate-500 text-slate-300 rounded"
+            className="btn btn-ghost px-5 py-2"
           >
             {showSamples ? 'HIDE SAMPLES' : 'LOAD SAMPLE SCENARIOS'}
           </button>
@@ -133,7 +136,7 @@ export default function Upload() {
                 key={s.name}
                 onClick={() => runSample(s.name)}
                 disabled={busy}
-                className="text-left px-4 py-3 text-xs border border-slate-800 hover:border-emerald-600 hover:bg-emerald-500/5 rounded flex justify-between items-center"
+                className="text-left px-4 py-3 text-xs border border-slate-800 hover:border-emerald-600 hover:bg-emerald-500/5 rounded flex justify-between items-center disabled:opacity-40"
               >
                 <span className="text-slate-300">{s.name}</span>
                 <span className="text-slate-600">{(s.size / 1024).toFixed(1)} KB</span>

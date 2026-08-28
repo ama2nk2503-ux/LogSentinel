@@ -14,6 +14,9 @@ dist/
 Thumbs.db
 frontend/dist/
 frontend/graph_diag*.cjs
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
 .opencode/
 
 # Block stray logs everywhere

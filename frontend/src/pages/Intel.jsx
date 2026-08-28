@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
+import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
 import { api } from '../lib/api.js'
 
@@ -18,7 +19,7 @@ export default function Intel() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8">
-            <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-5">THREAT INTELLIGENCE</h1>
+            <PageHeader title="THREAT INTELLIGENCE" />
             <div className="mb-5"><JobPicker value={jobId} onChange={setJobId} /></div>
             {!jobId && <div className="text-sm text-slate-500">Select a processed dataset.</div>}
 
@@ -61,6 +62,8 @@ export default function Intel() {
                         {data.reports.map((r, i) => (
                             <div key={r.title + i} className="border border-slate-800 rounded bg-slate-900/40">
                                 <button onClick={() => setOpen(open === i ? null : i)}
+                                        aria-expanded={open === i}
+                                        aria-controls={`rep-${i}`}
                                         className="w-full px-4 py-2.5 flex justify-between items-center hover:bg-slate-800/30 rounded">
                                     <span className="text-sm text-slate-200">
                                         <b className="text-red-300">{r.title}</b>
@@ -76,7 +79,7 @@ export default function Intel() {
                                     </span>
                                 </button>
                                 {open === i && (
-                                    <div className="px-4 pb-3 text-[12px] space-y-1.5 border-t border-slate-800 pt-2">
+                                    <div id={`rep-${i}`} className="px-4 pb-3 text-[12px] space-y-1.5 border-t border-slate-800 pt-2">
                                         {r.why.map((w) => (
                                             <div key={w} className="text-emerald-400">✓ <span className="text-slate-300">{w}</span></div>
                                         ))}

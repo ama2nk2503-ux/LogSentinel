@@ -11,6 +11,7 @@ export default function JobPicker({ value, onChange }) {
     <select
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
+      aria-label="Select dataset"
       className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-600"
     >
       <option value="">— select dataset —</option>

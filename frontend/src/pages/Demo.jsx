@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from '../lib/api.js'
+import { api, apiText } from '../lib/api.js'
+import PageHeader from '../components/PageHeader.jsx'
 
 const SCENARIOS = [
     { file: 'scenario1_ssh_bruteforce.log', label: 'SSH Brute Force → Account Compromise' },
@@ -45,7 +46,7 @@ export default function Demo() {
                 // 1. load sample content
                 setStage('uploading')
                 narr('  Uploading dataset…')
-                const text = await fetch(`/api/samples/${encodeURIComponent(sc.file)}`).then((r) => r.text())
+                const text = await apiText(`/samples/${encodeURIComponent(sc.file)}`)
                 const up = await api('/paste', { method: 'POST', body: JSON.stringify({ text, name: sc.file }) })
                 const jobId = up.job_id
 
@@ -95,27 +96,24 @@ export default function Demo() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8">
-            <h1 className="text-lg tracking-[0.25em] text-emerald-400 mb-1">CINEMATIC DEMO MODE</h1>
-            <p className="text-xs text-slate-500 mb-6">
-                Runs the four attack scenarios end-to-end through the real pipeline — every number shown is computed live.
-            </p>
+            <PageHeader title="CINEMATIC DEMO MODE" subtitle="Runs the four attack scenarios end-to-end through the real pipeline — every number shown is computed live." />
 
             {!running && !done && (
                 <button onClick={run}
-                        className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded tracking-widest text-sm font-bold animate-pulse">
+                        className="btn btn-primary px-8 py-3 relative overflow-hidden">
                     ▶ START FULL PIPELINE DEMO
                 </button>
             )}
             {running && (
                 <button onClick={stop}
-                        className="px-6 py-2 border border-red-700 text-red-300 rounded text-xs tracking-widest hover:bg-red-950/40">
+                        className="btn btn-danger px-6 py-2 text-xs">
                     ■ STOP
                 </button>
             )}
 
             {running && (
                 <div className="mt-6 border border-emerald-800 rounded-lg bg-black/60 p-5 font-mono text-[12px] leading-6 max-w-2xl">
-                    <div className="flex gap-1.5 mb-3">
+                    <div className="flex gap-1.5 mb-3" role="progressbar" aria-valuemin={0} aria-valuemax={SCENARIOS.length} aria-valuenow={Math.min(step + 1, SCENARIOS.length)} aria-label="Demo pipeline progress">
                         {SCENARIOS.map((_, i) => (
                             <span key={i} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-emerald-500' : i === step ? 'bg-emerald-400 animate-pulse' : 'bg-slate-700'}`} />
                         ))}
@@ -141,21 +139,7 @@ export default function Demo() {
                 </div>
             )}
 
-            {error && <div className="mt-4 text-sm text-red-400">{error}</div>}
-        </div>
-    )
-}
-
-function narr(line) {
-    // local helper kept outside state to batch updates cheaply
-    queueMicrotask(() => window.dispatchEvent(new CustomEvent('demo-narr', { detail: line })))
-}
-
-// bridge narration events into component state once mounted
-if (typeof window !== 'undefined') {
-    window.removeEventListener('demo-narr', Demo._bridge || (() => {}))
-    Demo._bridge = (e) => {
-        window.__demoNarr?.(e.detail)
-    }
-    window.addEventListener('demo-narr', Demo._bridge)
+            {error && <div className="mt-4 text-sm text-red-400" role="alert">{error}</div>}
+</div>
+  )
 }

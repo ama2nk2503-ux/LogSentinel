@@ -61,7 +61,7 @@ export default function Login() {
             {busy ? 'AUTHENTICATING...' : 'SIGN IN'}
           </button>
         </form>
-        <div className="text-center mt-4 text-[10px] text-slate-600">
+        <div className="text-center mt-4 text-[10px] text-slate-400">
           Default credentials: admin / changeme
         </div>
       </div>
