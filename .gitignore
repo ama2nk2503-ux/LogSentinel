@@ -12,7 +12,13 @@ dist/
 .vscode/
 .DS_Store
 Thumbs.db
-*.log
 frontend/dist/
 frontend/graph_diag*.cjs
 .opencode/
+
+# Block stray logs everywhere
+*.log
+
+# But allow sample logs (needed for demo + benchmark)
+!samples/*.log
+!samples/labeled/*.log

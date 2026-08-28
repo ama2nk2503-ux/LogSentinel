@@ -1,0 +1,6 @@
+Aug 25 09:00:01 mail01 postfix: to=amaan.khan@example.com status=sent
+Aug 25 09:01:12 web02 app: login user Amaan Khan password=Hunter2Secret ok
+Aug 25 09:02:30 crm app: contact jane.doe@corp.org phone +91 98765 43210 imported
+Aug 25 09:03:44 api gw: request auth session_id=Zx91aa22bb33 key AKIAIOSFODNN7EXAMPLE
+Aug 25 09:05:00 billing: account=1234567890 charged successfully
+Aug 25 09:06:20 cron: routine cleanup finished without errors

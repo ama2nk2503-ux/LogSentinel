@@ -1,0 +1,6 @@
+SRC=185.23.45.67 DST=10.0.0.15 PROTO=TCP DPT=443 ACTION=DENY note=http://185.23.45.67/payload/x.sh
+SRC=203.0.113.9 DST=10.0.0.16 PROTO=UDP DPT=53 ACTION=DENY dns=malware.example.com
+SRC=198.51.100.77 DST=10.0.0.17 PROTO=TCP DPT=22 ACTION=DENY md5=5d41402abc4b2a76b9719d911017c592
+SRC=185.23.45.67 DST=10.0.0.18 PROTO=TCP DPT=80 ACTION=DENY host=c2.evil-domain.net sha256=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+beacon 2001:db8::dead:beef seen contacting backup-server.internal.local
+version 1.2.3.4 of agent installed cleanly
