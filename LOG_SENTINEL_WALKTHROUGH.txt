@@ -1,0 +1,488 @@
+================================================================================
+LOGSENTINEL — SIEM-STYLE PLATFORM WALKTHROUGH
+(Smart India Hackathon 2026 — SIH26156)
+================================================================================
+
+"UNIVERSAL CYBERSECURITY DATA PREPARATION AND THREAT INTELLIGENCE LAYER"
+
+Tagline:  RAW LOGS IN. SECURITY INTELLIGENCE OUT.
+
+A full-stack cybersecurity platform that takes messy, heterogeneous raw log
+files (syslog, Apache, Windows XML, firewall key=value, JSON/CSV/XML, or free
+text) and turns them into normalized, privacy-safe, enriched, correlated and
+SIEM-ready security intelligence -- all with a deterministic pipeline.
+There is NO AI/LLM in the loop. Everything is explainable: parsers, rules,
+scores, and even the natural-language search produce auditable results.
+
+Default login:  admin / changeme
+Frontend URL:   http://127.0.0.1:5173
+Backend URL:    http://127.0.0.1:8000  (FastAPI, auto docs at /docs)
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURE OVERVIEW
+--------------------------------------------------------------------------------
+
+  [ React Frontend 18 + Vite 6 + Tailwind v4 ]   -> http://127.0.0.1:5173
+        |
+        |  REST API (JSON), Authorization: Bearer <JWT>
+        v
+  [ FastAPI Backend (Python 3.12+) ]             -> http://127.0.0.1:8000
+        |   ^ middleware: every /api call must have a valid JWT,
+        |   | except /api/auth/login, /api/auth/register, /api/health
+        v
+  [ SQLite database, WAL mode ]                  -> data/ (git-ignored)
+        |
+        v
+  [ rules/*.yaml + samples/* + samples/labeled/* ]
+
+How the two halves talk:
+  - In development, Vite proxies every request to /api/* to the backend on
+    port 8000, so the browser sees a single origin (no CORS headaches).
+  - The frontend wraps fetch in frontend/src/lib/api.js: it always attaches
+    the stored JWT (ls_token in localStorage) as a bearer token, and on a
+    401 it redirects to /login.
+  - React state is managed with TanStack Query v5 (automatic caching,
+    refetch, and polling). Routes are lazy-loaded per page with Suspense.
+
+--------------------------------------------------------------------------------
+2. THE 17-STAGE PROCESSING PIPELINE
+--------------------------------------------------------------------------------
+
+Every uploaded file goes through these stages, in order. The whole thing is
+deterministic -- same input, same output, every time.
+
+  1.  INGESTION       Upload / paste / sample selects a "job" (UUID) to
+                      track everything that follows.
+  2.  VALIDATION      Extension whitelist (.log .txt .json .csv .xml) and a
+                      200 MB size cap. Rejected upstream of processing.
+  3.  CHUNKED READ    File is read from disk in batches of ~5,000 lines to
+                      keep memory flat even on huge files.
+  4.  FORMAT DETECTION  Heuristic scoring across all known parsers; the best
+                      match wins with a confidence percentage.
+  5.  PARSER DISPATCH Registry picks: syslog | apache | windows firewall
+                      key=value | json | csv | xml | generic fallback.
+  6.  NORMALIZATION   Every parsed line is mapped to a single UniversalEvent
+                      schema (timestamp, source IP, severity, event type,
+                      message, raw text). Field-level provenance is kept.
+  7.  PERSISTENCE     Batched INSERT statements into SQLite (WAL mode).
+  8.  IOC EXTRACTION  Regex+validation extraction of IPv4/IPv6, domains,
+                      URLs, MD5/SHA1/SHA256 hashes, plus suspicious patterns
+                      (encoded PowerShell, SQL injection, path traversal).
+  9.  PII DETECTION   Detects emails, phones, names, API keys, passwords,
+                      tokens, session ids inside event text.
+  10. RULE ENGINE     YAML-driven rule files evaluated in windows with
+                      state (e.g. "N failed logins from same IP in 60s").
+  11. CORRELATION     Entity + time clustering stitches unrelated events into
+                      attack chains backed by concrete evidence IDs.
+  12. CLASSIFICATION  Each event/incident is tagged BENIGN / SUSPICIOUS /
+                      MALICIOUS across 13 event categories.
+  13. MITRE ATT&CK    Rules are mapped to tactics/techniques; each attacker
+                      gets a kill-chain progression.
+  14. RISK SCORING    0-100 additive, capped, weighted factors -- every score
+                      ships with the reasons that made it up.
+  15. PRIVACY GATE    ONE choke point: API responses, exports, PDFs, graph
+                      and search all pass through the policy engine before
+                      anything leaves the system.
+  16. THREAT INTEL    Aggregates IOCs into a feed and writes human-readable
+                      intelligence reports.
+  17. EXPORT          Converts events/IOCs to JSON, CSV, CEF, LEEF, STIX 2.1,
+                      Syslog, and a branded PDF threat report.
+
+--------------------------------------------------------------------------------
+3. DATA MODEL
+--------------------------------------------------------------------------------
+
+  jobs
+      One row per ingested dataset. Has a UUID id, filename, detected
+      format + confidence, line/event counts, severity breakdown, a chosen
+      detected_format, and per-stage processing timestamps. The JobPicker
+      dropdown in the UI lists these, so "select a dataset" = pick a job.
+
+  events
+      Normalized UniversalEvents. Fields include: id, job_id, timestamp,
+      severity (LOW/MEDIUM/HIGH/CRITICAL), source_ip, destination_ip,
+      event_type, message, raw_text, and flags (has_ioc, has_pii, iocs json,
+      pii json, normalized json). A bidirectional RAW vs NORMALIZED view is
+      derived from raw_text + normalized json.
+
+  iocs
+      Extracted indicators tied to events: value, type (ipv4/ipv6/domain/url/
+      md5/sha1/sha256), job/event references, and provenance ("could it be a
+      malicious IP?" style flags from validators).
+
+  detections / incidents
+      Rule-engine hits become detections; correlation clusters them into
+      incidents (one row per attacker/entity story), with rule metadata,
+      confidence, severity, classification and references to the exact
+      evidence events that triggered it.
+
+  graph
+      Computed view (users/hosts/IPs as nodes, communications as edges) with
+      severity colors and per-entity risk, served to the Cytoscape.js page.
+
+  policy
+      JSON document holding the privacy policy, editable via the UI and
+      persisted to the DB. Defaults come from rules/privacy_policy.yaml.
+
+--------------------------------------------------------------------------------
+4. AUTHENTICATION & SESSION FLOW
+--------------------------------------------------------------------------------
+
+  - POST /api/auth/login  { username, password }
+        Password checked with bcrypt; on success the backend returns
+        { access_token: <JWT>, username }. No password is stored in plaintext
+        and only a bcrypt hash exists in the DB.
+  - GET /api/auth/me       Returns the current user; the app calls it on load
+                           to restore an existing session.
+  - POST /api/auth/register  Creates a new user (bcrypt-hashed).
+  - The backend auth middleware decodes the JWT for every /api request; any
+    missing/expired/bad token gets a 401.
+  - The frontend keeps the token in localStorage (ls_token). AuthContext
+    drives login/logout; ProtectedRoute guards every page except /login.
+  - On a 401 anywhere, api.js redirects the browser back to /login.
+
+--------------------------------------------------------------------------------
+5. THE FRONTEND PAGES -- WHAT EACH PART IS AND HOW IT WORKS
+--------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+5.1  LOGIN  (/login)
+-------------------------------------------------------------------------------
+  What it is:        The only public page. Centered form with USERNAME and
+                     PASSWORD fields, a SIGN IN button, and a "Register a
+                     new user" toggle for account creation.
+  How it works:      Calls /api/auth/login, stores the JWT in localStorage,
+                     then navigates to /. Errors surface inline in a red
+                     alert. On load, if a stored token still validates via
+                     /api/auth/me, the app skips the login step.
+
+-------------------------------------------------------------------------------
+5.2  UPLOAD  (/)  -- the home page
+-------------------------------------------------------------------------------
+  What it is:        THE entry point for data. Three ways to get logs in:
+                       1) Drag & drop / click-to-browse a file
+                       2) Paste raw log text into a textarea
+                       3) LOAD SAMPLE SCENARIOS -- one-click loading of the
+                          four bundled demo logs
+                     Plus a dataset picker to open an already-processed job.
+  How it works:
+     - File mode:    the file is sent via multipart form-data to
+                     POST /api/upload (with bearer token -- files are never
+                     loaded through an unauthenticated path).
+     - Paste mode:   text is POSTed to /api/paste.
+     - Sample mode:  fetches the sample list from GET /api/samples, then
+                     loads the chosen sample through the same authenticated
+                     upload path.
+     - A JOB CARD appears showing live progress through the stages; the
+       frontend polls the job state until READY. When done, buttons appear:
+       "View Dashboard", "Explore Events", "Download JSON" -- the typical
+       next step after a file lands.
+  Security: extension whitelist + 200 MB cap live on the backend; uploaded
+  content is parsed, never executed.
+
+-------------------------------------------------------------------------------
+5.3  DASHBOARD  (/dashboard[/:jobId])
+-------------------------------------------------------------------------------
+  What it is:        Executive summary for one processed dataset:
+                     stat cards, an events-over-time timeline, a severity
+                     breakdown, and an entity/attack overview.
+  How it works:      Chooses a dataset via JobPicker, then GET
+                     /api/dashboard/{job_id} returns aggregated stats,
+                     per-minute series (Recharts timeline), severity
+                     distribution (donut), and summary numbers. Everything
+                     updates via TanStack Query. EXPORT JSON button streams
+                     the full normalized dataset through the privacy gate as
+                     a browser download (authenticated fetch, not window.open).
+
+-------------------------------------------------------------------------------
+5.4  LOG EXPLORER  (/explorer)
+-------------------------------------------------------------------------------
+  What it is:        The raw-and-normalized event browser. The heart of the
+                     "verify what the parser did" story.
+  How it works:
+     - Paginated table (50 events/page, NEXT/PREV controls).
+     - Search/filter inputs: free-text search, severity, threat category,
+       IOC type, PII-only toggle. Inputs are DEBOUNCED (~300ms) so typing
+       doesn't spam the API; the search box is also mirrored to the URL via
+       useQueryParam so filters survive reloads.
+     - Click any row -> "EVENT DETAIL - RAW vs NORMALIZED" dialog showing
+       the original raw line side-by-side with the normalized fields
+       (timestamp, source IP, severity, event type, extracted IOCs, PII).
+       The dialog traps focus, closes on Escape, and returns focus to the
+       row that opened it (full keyboard/AT support).
+     - All filtering happens server-side through query params on
+       GET /api/events.
+
+-------------------------------------------------------------------------------
+5.5  THREATS  (/threats)
+-------------------------------------------------------------------------------
+  What it is:        Detection results: rule matches, incident cards, and the
+                     animated MITRE ATT&CK kill-chain per attacker.
+  How it works:      GET /api/threats/{job_id} returns detections and
+                     incidents. The page shows:
+                       - Rule matches with raw evidence lines,
+                       - Incident cards grouped by attacker entity with the
+                         correlated event chain as clickable evidence,
+                       - A per-attacker kill-chain: 14 MITRE ATT&CK tactics
+                         animated in sequence, with the techniques reached
+                         by this attacker lit up.
+                     Kill-chain buttons expose expand/collapse state with
+                     aria-expanded for full accessibility.
+
+-------------------------------------------------------------------------------
+5.6  LIVE ATTACK GRAPH  (/graph)
+-------------------------------------------------------------------------------
+  What it is:        A Cytoscape.js entity graph: users (stars), hosts
+                     (rect), IPs (dots), with edges between entities that
+                     communicated. Node size = risk score, edge color =
+                     severity. Clicking a node opens a drill-down panel with
+                     that entity's events and detections.
+  How it works:      GET /api/graph/{job_id} returns nodes + edges built by
+                     correlating the normalized events. The graph canvas is
+                     loaded with cytoscape bundled locally (no CDN). The
+                     container carries role="img" + an aria-label describing
+                     the graph for screen readers.
+
+-------------------------------------------------------------------------------
+5.7  THREAT INTELLIGENCE  (/intel)
+-------------------------------------------------------------------------------
+  What it is:        The IOC feed and intelligence reports for a dataset.
+  How it works:      GET /api/intel/{job_id} aggregates all extracted IOCs by
+                     type (IPs, domains, URLs, hashes) with counts, and
+                     generates human-readable summaries ("most targeted
+                     service", "most active attacker", cardinality of IOCs,
+                     etc.). Accordions keep it scannable; every accordion
+                     button broadcasts its expanded state.
+
+-------------------------------------------------------------------------------
+5.8  PRIVACY  (/privacy)
+-------------------------------------------------------------------------------
+  What it is:        The editable Privacy Policy Engine -- the single output
+                     choke point of the whole platform.
+  How it works:      The policy is a JSON document mapping each PII type to
+                     an action:
+                        KEEP      leave value as-is
+                        REDACT    replace with <REDACTED>
+                        TYPE      replace with <email>/<phone>/...
+                        MASK      partial masking (e.g. j***@example.com)
+                        HASH      replace with SHA-256 hash of the value
+                     GET /api/policy loads current settings; PUT /api/policy
+                     persists changes. Because every output surface (API,
+                     exports, PDF, graph, search) funnels through this one
+                     function, flipping KEEP -> HASH immediately changes what
+                     leaves the system everywhere. Icons + labels per PII
+                     type keep the UI self-explanatory.
+
+-------------------------------------------------------------------------------
+5.9  SIEM EXPORT  (/export)
+-------------------------------------------------------------------------------
+  What it is:        Download normalized events in real SIEM formats.
+  How it works:      Choose a dataset, pick a format, press EXPORT. The
+                     backend validates the payload structurally before
+                     download (no half-broken files), then streams:
+                       JSON      full normalized records
+                       CSV       flat normalized table
+                       CEF       ArcSight Common Event Format (fields
+                                 escaped/encoded correctly)
+                       LEEF      IBM QRadar Log Event Extended Format
+                       STIX 2.1  structured threat intelligence JSON
+                       Syslog    classic RFC3164-style lines
+                     PLUS a branded, multi-page PDF THREAT REPORT
+                     (executive summary, findings, evidence, charts) built
+                     with reportlab at GET /api/report/{job_id}.
+                     Everything is post-processed by the privacy policy.
+
+-------------------------------------------------------------------------------
+5.10 BENCHMARK  (/benchmark)
+-------------------------------------------------------------------------------
+  What it is:        A live, honest measurement of the engine against
+                     ground-truth labels -- the "prove it works" page.
+  How it works:      POST /api/benchmark/run executes the suite; the results
+                     are computed in real time against samples/labeled/
+                     (ioc_labels.json + pii_labels.json), with nothing
+                     hardcoded:
+                       - Format detection accuracy
+                       - Parse success rate
+                       - IOC precision / recall / F1
+                       - PII precision / recall / F1
+                       - Redaction effectiveness
+                       - Throughput (lines/sec), peak RAM, per-stage timing
+                     Results render as a scoreboard table (LAST RUN banner)
+                     and bar charts via GET /api/benchmark/results.
+
+-------------------------------------------------------------------------------
+5.11 CINEMATIC DEMO MODE  (/demo)
+-------------------------------------------------------------------------------
+  What it is:        A guided, narrated walkthrough of four real attack
+                     scenarios spinning through the ACTUAL pipeline.
+  How it works:      Four bundled scenarios (SSH brute-force, port scan,
+                     web attacks, Windows auth) feed real sample logs into
+                     the real parsing/detection pipeline. Milestones light up
+                     as each stage completes, with a narration ticker that
+                     explains what just happened and why the engine reached
+                     its conclusions. It is not faked -- the detections shown
+                     came from the live rules.
+
+-------------------------------------------------------------------------------
+5.12 LIVE STREAMING SIMULATOR (backend /api/stream/*)
+-------------------------------------------------------------------------------
+  A background generator that emits a realistic, timestamped log stream over
+  time so a dataset "fills up" in live fashion: POST /api/stream/start
+  begins a simulation bound to a job, GET /api/stream/status reports its
+  state, POST /api/stream/stop halts it. Useful to watch the pipeline and
+  dashboard build as data arrives.
+
+-------------------------------------------------------------------------------
+5.13 ASK-THE-DATA  (POST /api/query -- accessed from Explorer)
+-------------------------------------------------------------------------------
+  A natural-language question box with a fully DETERMINISTIC parser
+  (backend/detection/intent.py) -- zero AI, fully explainable. It translates
+  a question into structured event filters ("chips") and runs them:
+
+     Examples:
+       "show critical brute force attempts in the last hour"
+            -> severity=CRITICAL, threat~="Brute Force",
+               since_minutes=60
+       "any sql injection today from 192.168.1.45?"
+            -> threat~="Web Attack", since_today=true, entity IP
+       "list all ipv4 iocs with pii"
+            -> ioc_type=ipv4, has_pii=true
+       "failed logins last 10 minutes"
+            -> auth_events=true, since_minutes=10
+
+     Recognized dimensions: severity words, threat/category words, auth
+     event types, PII flags, IOC types (ip/domain/url/md5/sha1/sha256),
+     time windows (minutes/hours/days/today), and bare IPv4 entity
+     extraction. If nothing matches, it falls back to a full-text search.
+     Each matched dimension becomes a visible filter chip, so the user sees
+     exactly how their question was interpreted.
+
+--------------------------------------------------------------------------------
+6. RULES, DETECTION & CORRELATION (backend/detection/, rules/)
+--------------------------------------------------------------------------------
+
+  Rule files (hot-reloadable YAML in rules/):
+    authentication.yaml   brute force, credential abuse
+    network.yaml          port scan, host scan
+    web_attacks.yaml      SQLi, XSS, path traversal
+    malware.yaml          suspicious processes, encoded commands
+    attack_mapping.json   rule_id -> MITRE ATT&CK technique mapping
+
+  Engine (engine.py):  windowed, stateful evaluation -- rules count events
+  across a sliding time window per entity (e.g. same source IP) and fire
+  when thresholds are crossed; matches attach the exact triggering events.
+
+  Correlator (correlator.py):  stitches detections + related events into
+  incident chains grouped by entity and time, and links authentication
+  sequences (failed logins -> success -> suspicious command) into a story.
+
+  Classifier (classifier.py):  tags results BENIGN / SUSPICIOUS / MALICIOUS.
+  CRITICAL severity or critical categories -> MALICIOUS; multi-factor or
+  medium chains -> SUSPICIOUS; otherwise BENIGN.
+
+  Risk (risk.py):  0-100 additive, capped scoring. Every final score carries
+  a reason breakdown, so a "72" is explainable factor by factor.
+
+  Attack mapping (attack.py):  walks detections up to MITRE ATT&CK tactics/
+  techniques and renders the kill-chain the Threats page animates.
+
+--------------------------------------------------------------------------------
+7. IOCs, PII, PRIVACY (backend/ioc/, backend/privacy/)
+--------------------------------------------------------------------------------
+
+  IOC extractor + validator:  regex extraction then STRICT validation for
+  every candidate (real IPv4/IPv6, RFC domain, URL, proper hash length).
+  Nothing is extracted "on a hunch".
+
+  PII detector:  emails, phone numbers, names, API keys, passwords, tokens,
+  session IDs. The detector feeds the privacy policy engine, which applies
+  the configured action (KEEP/REDACT/TYPE/MASK/HASH) at the single choke
+  point shared by every output surface.
+
+  Policy is human-editable in the Privacy page and stored in the DB.
+
+--------------------------------------------------------------------------------
+8. SECURITY PROPERTIES
+--------------------------------------------------------------------------------
+
+  - Server binds 127.0.0.1 only; CORS locked to the dev origin.
+  - JWT auth on every /api route (middleware) + bcrypt password hashing.
+  - Upload whitelist (.log/.txt/.json/.csv/.xml) and 200 MB cap.
+  - Files stored under UUID names -- no user-controlled paths.
+  - 100% parameterized SQL -- no string interpolation.
+  - Uploaded content is parsed structurally, NEVER executed.
+  - React JSX auto-escapes all rendered output; CEF/LEEF fields escaped;
+    STIX validated before download.
+  - Every output path (API, export, PDF, graph, search) runs through the
+    privacy choke point before returning to the browser.
+
+--------------------------------------------------------------------------------
+9. RUNNING IT
+--------------------------------------------------------------------------------
+
+  Backend   (terminal 1, from repo root):
+      .venv\Scripts\python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir backend
+
+  Frontend  (terminal 2, from frontend/):
+      npm.cmd run dev            (then open http://127.0.0.1:5173)
+
+  Port collision (WinError 10048 / "only one usage of each socket address"):
+      An earlier server is still holding 8000 or 5173. Free the ports:
+        Get-NetTCPConnection -LocalPort 8000,5173 -State Listen |
+            Where-Object { $_.OwningProcess -ne 0 } |
+            ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+      Then start fresh. (You can also just use the already-running backend.)
+
+  Tests:
+      Backend : .venv\Scripts\python -m pytest             (103 tests)
+      Frontend: cd frontend; npx playwright test            (20 audit tests:
+                axe accessibility on all 10 pages + functional flows:
+                login, upload drag-drop/sample, dashboard export,
+                explorer dialog/Escape + pagination, threats/intel/graph,
+                benchmark run, mobile sidebar)
+
+--------------------------------------------------------------------------------
+10. PROJECT LAYOUT CHEAT-SHEET
+--------------------------------------------------------------------------------
+
+  backend/
+      main.py                  FastAPI app, JWT middleware, route registration
+      api/routes_*.py          REST handlers (auth, upload, jobs, dashboard,
+                               events, detections, threats, graph, intel, ioc,
+                               policy, export, report/pdf, query, samples,
+                               benchmark, stream)
+      core/                    config, SQLite storage (WAL), auth, jobs,
+                               ingest, 17-stage pipeline, benchmark harness
+      parsers/                 detector (confidence scoring) + registry +
+                               syslog/apache/firewall/windows/structured/
+                               generic parsers
+      detection/               engine (YAML rules), correlator, classifier,
+                               risk scoring, MITRE attack mapping, intent
+                               parser (Ask-the-Data)
+      ioc/                     extractor + validator
+      privacy/                 pii_detector, policy_engine, redactor
+      normalization/           UniversalEvent schema + normalizer
+      intelligence/            IOC aggregator + report generator
+      exporters/               JSON/CSV/CEF/LEEF/STIX2.1/Syslog + PDF report
+      streaming/               live log simulator
+
+  frontend/src/
+      components/              Layout (sidebar+nav), JobPicker, ProtectedRoute,
+                               Skeleton, PageHeader, EmptyState
+      lib/                     api.js (fetch+JWT+401 redirect),
+                               AuthContext, QueryProvider, useQueryParam,
+                               useDebouncedValue
+      pages/                   Login, Upload, Dashboard, Explorer, Threats,
+                               Graph, Intel, Privacy, ExportPage, Benchmark,
+                               Demo
+
+  rules/                       YAML threat rules + MITRE mapping + default
+                               privacy policy YAML
+  samples/                     scenario1-4 demo logs + labeled/ ground truth
+                               (benchmark fixtures)
+  specs/                       design.md + wow_features.spec.md (EARS)
+  tests/                       103 unit/integration tests
+
+================================================================================
+END OF WALKTHROUGH
+================================================================================
