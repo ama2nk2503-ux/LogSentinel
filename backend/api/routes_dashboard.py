@@ -30,6 +30,8 @@ def dashboard(job_id: str):
         pii_events = one(
             "SELECT COUNT(*) FROM events WHERE job_id=? AND pii_json != '[]'", job_id)
         detections_total = one("SELECT COUNT(*) FROM detections WHERE job_id=?", job_id)
+        ml_anomalies = one(
+            "SELECT COUNT(*) FROM events WHERE job_id=? AND anomalous=1", job_id)
 
         def group(sql):
             return [{"label": r[0] or "UNKNOWN", "count": r[1]}
@@ -81,6 +83,8 @@ def dashboard(job_id: str):
             "iocs_unique": uniq_iocs,
             "pii_events": pii_events,
             "redacted": pii_events,   # gate applies policy to every output
+            "ml_anomalies": ml_anomalies,
+            "ml_model": stats.get("ml_trained", 0),
         },
         "charts": {
             "severity": severity,

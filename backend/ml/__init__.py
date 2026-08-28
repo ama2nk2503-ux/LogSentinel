@@ -1,0 +1,1 @@
+"""LogSentinel in-loop ML: seeded, offline anomaly scoring (IsolationForest)."""

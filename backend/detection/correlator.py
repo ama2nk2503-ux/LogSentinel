@@ -11,6 +11,7 @@ import re
 from core.storage import db
 from detection.classifier import classify_incident, normalize_category
 from detection.risk import band, score_detection, score_incident
+from ml.model import bump as ml_bump
 
 SUCCESS_NOTE_RX = re.compile(r"successful authentication followed \(([^@)+]+)@")
 IDENTITY_LINK_RX = re.compile(r"\+identity-link (\S+)")
@@ -53,6 +54,12 @@ def _rescore_detections(job_id: str) -> None:
             score, new_reasons = score_detection(
                 r["severity"], metric_value, threshold, has_ioc, success,
                 len(evidence), min(distinct_targets, 5))
+            # In-loop ML: anomalous evidence escalates the detection with an
+            # explainable reason (IsolationForest anomaly score from ml.model).
+            ml_pts, ml_reason = ml_bump(evidence, job_id)
+            if ml_pts:
+                score = min(100, score + ml_pts)
+                new_reasons.append(ml_reason)
             if linked_user:
                 # preserve evidence-backed identity linkage for clustering
                 new_reasons.append(f"+identity-link {linked_user}")

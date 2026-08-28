@@ -1,7 +1,9 @@
 # Spec: LogSentinel Judge-Facing Feature Pack (`wow_features.spec.md`)
 
-Five deterministic (zero-LLM), offline-capable features. All values sourced from
-actual processed data; every surface passes the privacy policy choke point.
+Five deterministic (zero-LLM), offline-capable features, plus one seeded,
+offline ML signal (IsolationForest anomaly scoring — deterministic, no network).
+All values sourced from actual processed data; every surface passes the
+privacy policy choke point.
 
 ## Features
 

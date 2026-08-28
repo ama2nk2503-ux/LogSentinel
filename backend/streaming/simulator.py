@@ -135,6 +135,8 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
 
             if _state["lines_emitted"] % (lines_per_tick * 3) < lines_per_tick:
                 await asyncio.to_thread(evaluate_job, job_id)
+                from ml.model import refresh as ml_refresh
+                await asyncio.to_thread(ml_refresh, job_id)
                 await asyncio.to_thread(build_incidents, job_id)
                 from core.assets import build_assets
                 await asyncio.to_thread(build_assets, job_id)

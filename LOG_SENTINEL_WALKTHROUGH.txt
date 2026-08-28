@@ -10,9 +10,13 @@ Tagline:  RAW LOGS IN. SECURITY INTELLIGENCE OUT.
 A full-stack cybersecurity platform that takes messy, heterogeneous raw log
 files (syslog, Apache, Windows XML, firewall key=value, JSON/CSV/XML, or free
 text) and turns them into normalized, privacy-safe, enriched, correlated and
-SIEM-ready security intelligence -- all with a deterministic pipeline.
-There is NO AI/LLM in the loop. Everything is explainable: parsers, rules,
-scores, and even the natural-language search produce auditable results.
+SIEM-ready security intelligence -- with a deterministic, explainable pipeline
+plus one offline, seeded ML signal. An in-loop IsolationForest anomaly scorer
+(backend/ml/, scikit-learn, fixed random seed, no network) learns each job's
+normal baseline, flags shock events, and escalates correlated incident risk
+with a human-readable reason. Every other step stays auditable: parsers,
+rules, scores, and even the natural-language search produce explainable
+results.
 
 Default login:  admin / changeme
 Frontend URL:   http://127.0.0.1:5173
@@ -422,6 +426,8 @@ deterministic -- same input, same output, every time.
 
   Backend   (terminal 1, from repo root):
       .venv\Scripts\python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir backend
+      (ML milestone needs scikit-learn + friends — bundled in
+       requirements.txt; the existing venv already has them)
 
   Frontend  (terminal 2, from frontend/):
       npm.cmd run dev            (then open http://127.0.0.1:5173)
@@ -434,11 +440,12 @@ deterministic -- same input, same output, every time.
       Then start fresh. (You can also just use the already-running backend.)
 
   Tests:
-      Backend : .venv\Scripts\python -m pytest             (144 tests)
+      Backend : .venv\Scripts\python -m pytest             (149 tests)
       Frontend: cd frontend; npx playwright test            (31 audit tests:
                 axe accessibility on all 14 pages + functional flows:
                 login, upload drag-drop/sample, dashboard export,
-                explorer dialog/Escape + pagination, threats/intel/graph,
+                explorer dialog/Escape + pagination (incl. ML ANOMALY
+                column + starred shock events), threats/intel/graph,
                 alert ack + triage status/timeline modal, event-wall
                 start/stop, compliance audit findings/report, asset
                 inventory rows, intel reputation + geo lookups,
@@ -567,6 +574,54 @@ deterministic -- same input, same output, every time.
       reputation + geo lookups (31 total, axe-scanned every page).
 
 --------------------------------------------------------------------------------
+9d. MILESTONE 3 — IN-LOOP ML ANOMALY SCORING (seeded, offline, explainable)
+--------------------------------------------------------------------------------
+
+  New backend capability (stats-learned anomaly detection in the pipeline;
+  deterministic + fully offline + explainable — NOT an LLM):
+
+    ML MODULE (backend/ml/features.py, model.py)
+      - Train on a per-job basis: IsolationForest (sklearn, 100 trees,
+        contamination 0.05, random_state=42, n_jobs=1 — reproducible)
+        over a 16-dimension feature vector per event (time-of-hour,
+        source/dest port, severity/protocol/status/type ordinals,
+        message length, IOUs, risk). Feature maps use explicit ordinal
+        tables and per-job LabelEncoders with sorted classes, so scores
+        are deterministic across reruns and machines.
+      - Output: per-event anomaly_score (0..1, min-max normalized so the
+        clearest shock event scores ~1.0) and an anomalous flag, stored
+        as two new events columns (events.anomaly_score,
+        events.anomalous) added via column migrations in core/storage.py.
+      - Guards: jobs with < 8 events (MIN_EVENTS) are skipped; training
+        caps at the newest 5k events; model metadata persists in the
+        ml_models table.
+    WIRED INTO THE PIPELINE (core/pipeline.py, detection/correlator.py,
+      streaming/simulator.py)
+      - Order per job: evaluate_job -> ml_train -> build_incidents ->
+        alerts. The correlator's _rescore_detections() calls ml.bump()
+        on each detection's evidence events: when an evidence group
+        contains >= 1 anomalous event and the PEAK anomaly score >= 0.55,
+        incident risk gains +2..+30 points (min(30, round(20*peak))) with
+        an explainable reason line:
+          "+20 ML anomaly signal (1/7 evidence events anomalous, peak score 0.97)"
+        The live simulator refreshes the model on every tick before
+        incident building, so streamed jobs get ML too.
+    ENDPOINT + UI
+      - GET /api/ml/{job_id} -> {trained, model meta, per-job summary,
+        top-20 anomalous events} (new api/routes_ml.py).
+      - Dashboard gains an "ML ANOMALIES" card (from the trained model);
+        EXPLORER gains an ANOMALY column showing the 0..1 score per
+        event, with a red ★ badge on anomalous (flagged) events as a
+        one-glance shock-event marker.
+
+  Tests added: tests/test_ml.py (5) — retrain determinism on identical
+      inputs, shock events ranked top + flagged, tiny-job guard, anomaly
+      bump flowing into detection reasons end-to-end, and the /api/ml
+      endpoint payload => 149 backend tests total. e2e seed now includes
+      two port-6666/long-message shock lines so Explorer shows a starred
+      anomaly and the dashboard shows the ML card.
+
+--------------------------------------------------------------------------------
 10. PROJECT LAYOUT CHEAT-SHEET
 --------------------------------------------------------------------------------
 
@@ -574,7 +629,7 @@ deterministic -- same input, same output, every time.
       main.py                  FastAPI app, JWT middleware, route registration
       api/routes_*.py          REST handlers (auth, upload, jobs, dashboard,
                                events, detections, threats, alerts, graph,
-                               intel, geo, audit, assets, ioc, policy,
+                               intel, geo, audit, assets, ml, ioc, policy,
                                export, report/pdf, query, samples,
                                benchmark, stream)
       core/                    config, SQLite storage (WAL), auth, jobs,
@@ -583,6 +638,8 @@ deterministic -- same input, same output, every time.
                                workflow (triage.py), investigation
                                timeline (timeline.py), geoip.py, compliance.py,
                                assets.py
+      ml/                      IsolationForest anomaly scorer (features.py +
+                               model.py) — trained per job inside the pipeline
       parsers/                 detector (confidence scoring) + registry +
                                syslog/apache/firewall/windows/structured/
                                generic parsers
@@ -612,7 +669,7 @@ deterministic -- same input, same output, every time.
   samples/                     scenario1-4 demo logs + labeled/ ground truth
                                (benchmark fixtures)
   specs/                       design.md + wow_features.spec.md (EARS)
-  tests/                       144 unit/integration tests
+  tests/                       149 unit/integration tests
 
 ================================================================================
 END OF WALKTHROUGH

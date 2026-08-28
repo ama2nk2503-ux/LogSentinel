@@ -6,9 +6,10 @@
 
 ## 1. Scope
 
-Deterministic core pipeline (no AI in the loop) + benchmark dashboard + real-time
-stream simulation. AI provider interface stubbed only. Single-user, local-only
-prototype — server binds `127.0.0.1`, no auth (documented out-of-scope).
+Deterministic core pipeline (no LLM in the loop; one seeded, offline ML signal —
+IsolationForest anomaly scoring, deterministic + explainable) + benchmark
+dashboard + real-time stream simulation. All offline-capable, no network calls.
+Single-user prototype — server binds `127.0.0.1`, default login admin/changeme.
 
 ## 2. Stack
 

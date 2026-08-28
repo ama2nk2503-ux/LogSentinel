@@ -27,6 +27,8 @@ function seedText() {
     const mm = String(i).padStart(2, '0')
     lines.push(`Aug 25 10:${mm}:0${i % 10} server sshd[1${i}]: Failed password for admin from 185.23.45.67 port ${5000 + i} ssh2`)
   }
+  lines.push(`Aug 25 10:58:01 server sshd[1998]: Failed password for admin from 185.23.45.67 port 6666 ssh2 ${'X'.repeat(300)}`)
+  lines.push(`Aug 25 10:58:31 server sshd[1998]: Failed password for admin from 185.23.45.67 port 6666 ssh2 ${'Y'.repeat(300)}`)
   lines.push('Aug 25 10:59:59 server sshd[1999]: Accepted password for admin from 10.0.0.7 port 51234 ssh2')
   return lines.join('\n')
 }
@@ -119,6 +121,7 @@ test('Explorer: select seed job, open event detail dialog, Escape closes', async
   await page.goto('/explorer')
   await selectSeedJob(page)
   await expect(page.locator('tbody tr').first()).toBeVisible()
+  await expect(page.locator('thead th', { hasText: 'ANOMALY' })).toBeVisible()
   await page.locator('tbody tr').first().click()
   await expect(page.getByText('EVENT DETAIL — RAW vs NORMALIZED')).toBeVisible()
   await page.keyboard.press('Escape')
@@ -136,6 +139,7 @@ test('Explorer: paginates through seeded events', async ({ page }) => {
   await expect(page.getByText(/page 1\//)).toBeVisible()
   await page.getByRole('button', { name: /NEXT/ }).click()
   await expect(page.getByText(/page 2\//)).toBeVisible()
+  await expect(page.locator('tbody span', { hasText: '★' }).first()).toBeVisible()
   const rows = await page.locator('tbody tr').count()
   expect(rows).toBeGreaterThan(0)
   expect(rows).toBeLessThanOrEqual(50)
@@ -146,6 +150,7 @@ test('Dashboard: selecting a job renders cards and export triggers a download', 
   await page.goto('/dashboard')
   await selectSeedJob(page)
   await expect(page.getByText('TOTAL EVENTS')).toBeVisible()
+  await expect(page.getByText('ML ANOMALIES')).toBeVisible()
 
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: /EXPORT JSON/ }).click()

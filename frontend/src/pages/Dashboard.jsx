@@ -106,9 +106,10 @@ export default function Dashboard() {
         <Card label="NORMALIZED" value={cards.normalized} tone="blue" />
         <Card label="THREATS" value={cards.threats} tone="orange" />
         <Card label="CRITICAL" value={cards.critical} tone="red" />
-        <Card label="IOCs" value={cards.iocs_unique} tone="purple" />
-        <Card label="PII EVENTS" value={cards.pii_events} />
-        <Card label="REDACTED" value={cards.redacted} tone="green" />
+<Card label="IOCs" value={cards.iocs_unique} tone="purple" />
+<Card label="PII EVENTS" value={cards.pii_events} />
+<Card label="REDACTED" value={cards.redacted} tone="green" />
+{cards.ml_model > 0 && <Card label="ML ANOMALIES" value={cards.ml_anomalies} tone="red" />}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">

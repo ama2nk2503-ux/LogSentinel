@@ -11,7 +11,7 @@ router = APIRouter()
 EVENT_COLS = ("id", "event_id", "job_id", "line_no", "ts", "event_type", "source",
               "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "username",
               "hostname", "action", "status", "severity", "message", "threat_type",
-              "risk_score")
+              "risk_score", "anomaly_score", "anomalous")
 
 
 def _serialize(row, full=False):

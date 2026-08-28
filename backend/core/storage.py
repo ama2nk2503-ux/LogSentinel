@@ -207,6 +207,12 @@ CREATE TABLE IF NOT EXISTS audits (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_audit ON audits(job_id, framework);
 
+CREATE TABLE IF NOT EXISTS ml_models (
+    job_id TEXT PRIMARY KEY,
+    params_json TEXT DEFAULT '{}',
+    fitted_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -248,6 +254,8 @@ _COLUMN_MIGRATIONS = [
     ("correlations", "resolved_at", "TEXT"),
     ("alert_rules", "asset_type", "TEXT"),
     ("alert_rules", "min_criticality", "TEXT"),
+    ("events", "anomaly_score", "REAL DEFAULT 0"),
+    ("events", "anomalous", "INTEGER DEFAULT 0"),
 ]
 
 

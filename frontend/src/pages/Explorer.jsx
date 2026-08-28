@@ -85,7 +85,7 @@ export default function Explorer() {
             <table className="w-full text-xs min-w-[640px]" aria-label="Event log entries">
               <thead className="bg-slate-900/80 text-slate-500 tracking-wider">
                 <tr>
-                  {['TIME', 'SOURCE', 'TYPE', 'SRC IP', 'DST IP', 'THREAT', 'SEV', 'IOC', 'PII', 'RISK'].map((h) => (
+                  {['TIME', 'SOURCE', 'TYPE', 'SRC IP', 'DST IP', 'THREAT', 'SEV', 'IOC', 'PII', 'RISK', 'ANOMALY'].map((h) => (
                     <th key={h} className="px-3 py-2 text-left font-normal whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -115,10 +115,20 @@ export default function Explorer() {
                     <td className="px-3 py-1.5 text-purple-300">{e.iocs?.length ? `${e.iocs.length}` : ''}</td>
                     <td className="px-3 py-1.5 text-amber-300">{e.pii?.length ? `${e.pii.length}` : ''}</td>
                     <td className="px-3 py-1.5 font-bold text-slate-200">{e.risk_score || ''}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      {e.anomaly_score > 0.05 && (
+                        <span className={classNames(
+                          'px-1.5 py-0.5 rounded text-[10px] font-bold',
+                          e.anomalous ? 'bg-red-500/15 text-red-400' : 'text-slate-500',
+                        )}>
+                          {e.anomalous ? '★ ' : ''}{e.anomaly_score.toFixed(2)}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {data.events.length === 0 && (
-                  <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-600">No matching events</td></tr>
+                  <tr><td colSpan={11} className="px-3 py-6 text-center text-slate-600">No matching events</td></tr>
                 )}
               </tbody>
             </table>

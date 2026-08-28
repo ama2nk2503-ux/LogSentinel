@@ -168,12 +168,20 @@ def run_job(job_id: str) -> None:
         from detection.correlator import build_incidents
         from detection.engine import evaluate_job
         dets = evaluate_job(job_id)
+        # In-loop ML: fit a seeded IsolationForest on the job's events and tag
+        # anomalies. build_incidents() consumes these scores to escalate
+        # detections whose evidence is anomalous (evidence-backed, explainable).
+        from ml.model import train_job as ml_train
+        ml_stats = ml_train(job_id)
         incidents = build_incidents(job_id)
         stats_update = {}
         if dets:
             stats_update["detections"] = len(dets)
         if incidents:
             stats_update["incidents"] = len(incidents)
+        if ml_stats.get("trained"):
+            stats_update["ml_trained"] = 1
+            stats_update["ml_anomalies"] = ml_stats["n_anomalies"]
         if stats_update:
             jobs.merge_stats(job_id, **stats_update)
         # Asset inventory derived from events + detection/incident context;
