@@ -434,13 +434,15 @@ deterministic -- same input, same output, every time.
       Then start fresh. (You can also just use the already-running backend.)
 
   Tests:
-      Backend : .venv\Scripts\python -m pytest             (120 tests)
-      Frontend: cd frontend; npx playwright test            (25 audit tests:
-                axe accessibility on all 12 pages + functional flows:
+      Backend : .venv\Scripts\python -m pytest             (144 tests)
+      Frontend: cd frontend; npx playwright test            (31 audit tests:
+                axe accessibility on all 14 pages + functional flows:
                 login, upload drag-drop/sample, dashboard export,
                 explorer dialog/Escape + pagination, threats/intel/graph,
                 alert ack + triage status/timeline modal, event-wall
-                start/stop, benchmark run, mobile sidebar)
+                start/stop, compliance audit findings/report, asset
+                inventory rows, intel reputation + geo lookups,
+                benchmark run, mobile sidebar)
 
 --------------------------------------------------------------------------------
 9b. MILESTONE 1 — LIVE SOC OPS (alerting, triage, real-time wall, timeline)
@@ -497,6 +499,74 @@ deterministic -- same input, same output, every time.
       - EVENT WALL page + ALERTS/EVENT WALL sidebar + routes.
 
 --------------------------------------------------------------------------------
+9c. MILESTONE 2 — THREAT INTEL, GEOIP, COMPLIANCE, ASSET GRANULARITY
+--------------------------------------------------------------------------------
+
+  New backend capabilities (all offline-first + deterministic, no network calls):
+
+    GEOIP ENRICHMENT (backend/core/geoip.py, rules/geoip/ranges.csv)
+      - Offline IP->geo lookup via bisect over pre-bucketed subnets
+        (~30k rows), producing country / city / asn / org / lat / lon /
+        kind for src and dst IPs. Enriched in the pipeline handle() and
+        the live simulator, written as geo_src/geo_dst columns with a
+        ->geo-lookup{ip,country,...} evidence line.
+      - Endpoints: GET /api/geo/lookup?ip=, GET /api/geo/job/{job_id}
+        (per-event geo), GET /api/geo/job/{job_id}/banner (top regions).
+      - Frontend: GEO tab under INTEL with lookup card.
+
+    THREAT-INTEL SERVICES (backend/core/intel.py + api/routes_intel.py)
+      - Bundled REPUTATION feed from rules/intel_reference.yaml (7
+        seeded indicators: 6 host IOCs + 1 domain) loaded at startup
+        and reloadable (POST /api/intel/reference/reload rebuilds it;
+        hot-reload safe, no restart needed).
+      - ICE/STIX1 reputation+confidence carry through to alerts; a
+        reputation hit bumps incident risk via a confidence-scaled
+        SEVERITY BUMP in core/pipeline.py.
+      - New endpoints: GET /api/intel/reference, POST
+        /api/intel/reference/reload, GET /api/intel/reputation/{value}
+        (offline verdict: malicious/suspicious/informational/unknown).
+      - Frontend: INTEL page now tabs INDICATORS / REFERENCE FEED /
+        REPUTATION / GEO.
+
+    COMPLIANCE AUDIT + REPORT (backend/core/compliance.py,
+        rules/compliance.yaml, api/routes_audit.py)
+      - 4 frameworks: NIST SP 800-53 (21 controls), CIS Controls v8
+        (12), ISO 27001:2022 (10), CIS Benchmarks (5).
+      - Findings evaluated from the labeled detections table:
+        severity->status (HIGH FAIL / MEDIUM WARN), count+operator+
+        threshold from YAML, per-rule evidence (scrolls) and a
+        per-framework letter grade. Boundary-protection controls
+        (SC-7, CIS-12.4) intentionally require deny-evidence, so a
+        clean dataset still FAILs them (demo honesty).
+      - Markdown report per framework (headers + per-control status
+        table + evidence + grade); GET /api/audit/report/{job}/
+        {framework} returns {report: markdown}.
+      - New COMPLIANCE page: PASS/WARN/FAIL counters, expandable
+        framework findings, DOWNLOAD .MD report button.
+
+    ASSET INVENTORY + PER-ASSET RULES (backend/core/assets.py,
+        rules/alert_rules.yaml, api/routes_assets.py)
+      - build_assets() derives inventory rows per job: hosts from
+        src hostnames, IP entities (type-aware; src_ip/dst_ip/ipv4 ->
+        ip, hostname -> host), plus dst-IP assets that answered known
+        service ports (22/80/443/3306/3389/53...). Each asset carries
+        criticality, risk_score (MAX detections), incident/detection
+        counts, first/last seen, service tags.
+      - Asset-granular ALERT RULES: incident rules now gate on
+        asset_type / min_criticality via _assets_for() (matches the
+        incident entity or its evidence event_ids); seeds
+        ALERT_ASSET_WEB_ATTACK (asset_type web, min_risk 40) and
+        ALERT_CRITICAL_ASSET_INCIDENT (min_criticality CRITICAL,
+        min_risk 45) fire only/on high-value targets.
+      - New ASSET INVENTORY page: totals by criticality + risk +
+        asset table.
+
+  Tests added: tests/test_geoip.py (5), test_intel_m2.py (6),
+      test_compliance.py (6), test_assets.py (7) => 24 new backend
+      tests (144 total). New e2e: compliance audit, asset rows, intel
+      reputation + geo lookups (31 total, axe-scanned every page).
+
+--------------------------------------------------------------------------------
 10. PROJECT LAYOUT CHEAT-SHEET
 --------------------------------------------------------------------------------
 
@@ -504,13 +574,15 @@ deterministic -- same input, same output, every time.
       main.py                  FastAPI app, JWT middleware, route registration
       api/routes_*.py          REST handlers (auth, upload, jobs, dashboard,
                                events, detections, threats, alerts, graph,
-                               intel, ioc, policy, export, report/pdf, query,
-                               samples, benchmark, stream)
+                               intel, geo, audit, assets, ioc, policy,
+                               export, report/pdf, query, samples,
+                               benchmark, stream)
       core/                    config, SQLite storage (WAL), auth, jobs,
                                ingest, 17-stage pipeline, benchmark harness,
                                alerting engine (alerts.py), triage
                                workflow (triage.py), investigation
-                               timeline (timeline.py)
+                               timeline (timeline.py), geoip.py, compliance.py,
+                               assets.py
       parsers/                 detector (confidence scoring) + registry +
                                syslog/apache/firewall/windows/structured/
                                generic parsers
@@ -531,15 +603,16 @@ deterministic -- same input, same output, every time.
                                AuthContext, QueryProvider, useQueryParam,
                                useDebouncedValue
       pages/                   Login, Upload, Dashboard, Explorer, Threats,
-                               Alerts, Live, Graph, Intel, Privacy,
-                               ExportPage, Benchmark, Demo
+                               Alerts, Live, Graph, Intel, Compliance,
+                               Assets, Privacy, ExportPage, Benchmark, Demo
 
   rules/                       YAML threat rules + alert rules + MITRE
-                               mapping + default privacy policy YAML
+                               mapping + intel reference feed + compliance
+                               framework YAML + default privacy policy YAML
   samples/                     scenario1-4 demo logs + labeled/ ground truth
                                (benchmark fixtures)
   specs/                       design.md + wow_features.spec.md (EARS)
-  tests/                       120 unit/integration tests
+  tests/                       144 unit/integration tests
 
 ================================================================================
 END OF WALKTHROUGH

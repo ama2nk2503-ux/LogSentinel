@@ -18,9 +18,13 @@ from api.routes_samples import router as samples_router
 from api.routes_stream import router as stream_router
 from api.routes_threats import router as threats_router
 from api.routes_upload import router as upload_router
+from api.routes_geo import router as geo_router
+from api.routes_audit import router as audit_router
+from api.routes_assets import router as assets_router
 from core.auth import decode_token, seed_admin
 from core.alerts import seed_alert_rules
 from core.config import settings
+from core.intel import seed_intel_reference
 from core.storage import init_db
 
 app = FastAPI(title="LogSentinel", version="0.1.0")
@@ -66,6 +70,9 @@ app.include_router(graph_router, prefix="/api")
 app.include_router(query_router, prefix="/api")
 app.include_router(benchmark_router, prefix="/api")
 app.include_router(alerts_router, prefix="/api")
+app.include_router(geo_router, prefix="/api")
+app.include_router(audit_router, prefix="/api")
+app.include_router(assets_router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -73,6 +80,7 @@ def startup() -> None:
     init_db()
     seed_admin()
     seed_alert_rules()
+    seed_intel_reference()
 
 
 @app.get("/api/health")

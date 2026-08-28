@@ -12,6 +12,8 @@ const links = [
   { to: '/live', label: 'EVENT WALL' },
   { to: '/graph', label: 'ATTACK GRAPH' },
   { to: '/intel', label: 'INTEL' },
+  { to: '/compliance', label: 'COMPLIANCE' },
+  { to: '/assets', label: 'ASSET INVENTORY' },
   { to: '/privacy', label: 'PRIVACY' },
   { to: '/export', label: 'EXPORT' },
   { to: '/benchmark', label: 'BENCHMARK' },

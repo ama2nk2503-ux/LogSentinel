@@ -1,0 +1,25 @@
+network_start,network_end,country_code,country,city,asn,org,latitude,longitude,kind
+0,16777215,ZZ,IANA,Reserved,AS0,IANA,0.0,0.0,reserved
+167772160,184549375,PR,Private,RFC1918,AS0,Private Network,0.0,0.0,private
+1681915904,1686110207,PR,Private,CGNAT,AS0,Carrier-Grade NAT,0.0,0.0,private
+2130706432,2147483647,LO,Localhost,Localhost,AS0,Localhost,0.0,0.0,private
+2851995648,2852061183,PR,Private,Link-Local,AS0,Link-Local,0.0,0.0,private
+2886729728,2887778303,PR,Private,RFC1918,AS0,Private Network,0.0,0.0,private
+3232235520,3232301055,PR,Private,RFC1918,AS0,Private Network,0.0,0.0,private
+3323068416,3323199487,PR,Reserved,Benchmarking,AS0,Benchmarking,0.0,0.0,reserved
+3758096384,4026531839,ZZ,IANA,Multicast,AS0,Multicast,0.0,0.0,reserved
+4026531840,4294967295,ZZ,IANA,Reserved,AS0,Reserved,0.0,0.0,reserved
+16843009,16843009,US,United States,Los Angeles,AS13335,Cloudflare Inc,34.0522,-118.2437,public
+134744072,134744072,US,United States,Mountain View,AS15169,Google LLC,37.4056,-122.0775,public
+774722048,774779903,PE,Peru,Arequipa,AS12252,America Movil Peru,46.5062,-74.0133,public
+96206848,96272383,RU,Russia,Moscow,AS49505,ISPsystem LLC,55.7558,37.6173,public
+392167424,392232959,US,United States,Chicago,AS36351,SoftLayer Technologies,41.8781,-87.6298,public
+760414208,760479743,NL,Netherlands,Amsterdam,AS57494,Private Layer Inc,52.3676,4.9041,public
+1123614720,1123680255,US,United States,Mountain View,AS15169,Google LLC,37.4056,-122.0775,public
+1542455296,1542520831,RU,Russia,St. Petersburg,AS12714,Extrenet,59.9311,30.3609,public
+1745879040,1745944575,US,United States,San Francisco,AS13335,Cloudflare Inc,37.7749,-122.4194,public
+1841561600,1841627135,RU,Russia,Moscow,AS6132,Beeline,55.7558,37.6173,public
+3105303808,3105304063,RU,Russia,Moscow,AS49505,BitRiver Ltd,55.7558,37.6173,public
+3240099840,3240165375,RU,Russia,Moscow,AS210078,IP Volume inc,55.7558,37.6173,public
+3325256704,3325256959,US,United States,ITU-T TEST-NET-2,AS0,IANA TEST-NET,0.0,0.0,reserved
+3405803776,3405804031,ZZ,IANA,TEST-NET-3,AS0,IANA TEST-NET,0.0,0.0,reserved

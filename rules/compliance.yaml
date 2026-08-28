@@ -1,0 +1,139 @@
+# Offline, deterministic compliance audit frameworks. Each control maps to
+# measureable facts already stored by the pipeline (events/detections/
+# incidents/indicators) so audits never need external data or network calls.
+# Severity: one of critical | high | medium | low.
+frameworks:
+  - name: "NIST SP 800-53"
+    description: "Security controls from NIST Special Publication 800-53 mapped to detector-visible signals."
+    controls:
+      - id: "SI-4"
+        title: "System Monitoring"
+        description: "Intrusion detection and monitoring of attacker activity."
+        severity: high
+        metric: "incident_count"
+        operator: "le"
+        value: 2
+        note: "Every correlated attacker campaign is an undisrupted monitoring failure point."
+      - id: "AU-6"
+        title: "Audit Review and Analysis"
+        description: "Audit records are reviewed for suspicious activity."
+        severity: high
+        metric: "event_count"
+        filters:
+          event_type: "auth_failure"
+        operator: "le"
+        value: 5
+        note: "Concentrated authentication failures indicate missing audit analysis."
+      - id: "RA-5"
+        title: "Vulnerability Scanning"
+        description: "Vulnerabilities discovered via scanning are remediated."
+        severity: medium
+        metric: "detection_count"
+        operator: "le"
+        value: 3
+        note: "High detection density on classified workloads."
+      - id: "SC-7"
+        title: "Boundary Protection"
+        description: "Firewall blocks of intrusion attempts."
+        severity: high
+        metric: "event_count"
+        filters:
+          action: "deny"
+        operator: "ge"
+        value: 1
+        note: "Deny events prove the boundary is enforcing policy."
+      - id: "IR-4"
+        title: "Incident Handling"
+        description: "Incidents are contained and analyst-triaged."
+        severity: medium
+        metric: "untriaged_incidents"
+        operator: "le"
+        value: 0
+        note: "Incidents stuck in NEW with no analyst action."
+
+  - name: "ISO 27001:2022"
+    description: "Annex A controls materialised from log evidence (deterministic mapping)."
+    controls:
+      - id: "A.8.16"
+        title: "Monitoring Activities"
+        description: "Networks, systems and applications are monitored for security incidents."
+        severity: high
+        metric: "event_count"
+        filters:
+          event_type: "auth_failure"
+        operator: "le"
+        value: 10
+      - id: "A.8.23"
+        title: "Web Filtering"
+        description: "Access to external websites is managed to reduce exposure to malicious content."
+        severity: medium
+        metric: "event_count"
+        filters:
+          threat_type: "web_attack"
+        operator: "le"
+        value: 1
+      - id: "A.5.10"
+        title: "Acceptable Use"
+        description: "Use of information assets is monitored and controlled."
+        severity: low
+        metric: "pii_count"
+        operator: "le"
+        value: 0
+        note: "Personal data flowing through logs requires redaction."
+
+  - name: "PCI-DSS v4.0"
+    description: "Requirements 10–12 (logging, monitoring, testing) mapped to observable facts."
+    controls:
+      - id: "REQ-10.2"
+        title: "Audit Trails"
+        description: "Implement automated audit trails for system components."
+        severity: high
+        metric: "event_count"
+        operator: "ge"
+        value: 1
+        note: "Presence of parsed log events demonstrates an audit trail."
+      - id: "REQ-10.7"
+        title: "Log Review"
+        description: "Review logs for anomalies; see all authentication interactions."
+        severity: high
+        metric: "incident_count"
+        operator: "le"
+        value: 2
+      - id: "REQ-11.2"
+        title: "Vulnerability Scans"
+        description: "Run internal vulnerability scans."
+        severity: medium
+        metric: "detection_count"
+        operator: "le"
+        value: 4
+
+  - name: "CIS Controls v8"
+    description: "Safeguards mapped to detector output (safeguards 8, 12, 13)."
+    controls:
+      - id: "CIS-8.5"
+        title: "Manage Authentication Credentials"
+        description: "Establish and maintain an inventory of failed credential use."
+        severity: high
+        metric: "event_count"
+        filters:
+          event_type: "auth_failure"
+        operator: "le"
+        value: 5
+      - id: "CIS-12.4"
+        title: "Update Network-Based Threat Detection"
+        description: "Detect unauthorized network activity with automated tools."
+        severity: medium
+        metric: "event_count"
+        filters:
+          action: "deny"
+        operator: "ge"
+        value: 1
+      - id: "CIS-13.7"
+        title: "Detect Scanning Activity"
+        description: "Deploy tools capable of detecting port-scanning campaigns."
+        severity: high
+        metric: "incident_count"
+        filters:
+          category: "port scan"
+        operator: "ge"
+        value: 1

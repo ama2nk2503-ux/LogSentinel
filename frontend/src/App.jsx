@@ -12,6 +12,8 @@ const Live = lazy(() => import('./pages/Live.jsx'))
 const Threats = lazy(() => import('./pages/Threats.jsx'))
 const Graph = lazy(() => import('./pages/Graph.jsx'))
 const Intel = lazy(() => import('./pages/Intel.jsx'))
+const Compliance = lazy(() => import('./pages/Compliance.jsx'))
+const Assets = lazy(() => import('./pages/Assets.jsx'))
 const Privacy = lazy(() => import('./pages/Privacy.jsx'))
 const ExportPage = lazy(() => import('./pages/ExportPage.jsx'))
 const Benchmark = lazy(() => import('./pages/Benchmark.jsx'))
@@ -41,6 +43,8 @@ export default function App() {
           <Route path="/live" element={<Suspense fallback={<PageLoader />}><Live /></Suspense>} />
           <Route path="/graph" element={<Suspense fallback={<PageLoader />}><Graph /></Suspense>} />
           <Route path="/intel" element={<Suspense fallback={<PageLoader />}><Intel /></Suspense>} />
+          <Route path="/compliance" element={<Suspense fallback={<PageLoader />}><Compliance /></Suspense>} />
+          <Route path="/assets" element={<Suspense fallback={<PageLoader />}><Assets /></Suspense>} />
           <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
           <Route path="/export" element={<Suspense fallback={<PageLoader />}><ExportPage /></Suspense>} />
           <Route path="/benchmark" element={<Suspense fallback={<PageLoader />}><Benchmark /></Suspense>} />

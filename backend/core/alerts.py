@@ -59,13 +59,15 @@ def _normalize_rule(raw: dict) -> dict:
         "min_risk": max(0, int(raw.get("min_risk", 0))),
         "min_confidence": max(0.0, float(raw.get("min_confidence", 0.0))),
         "dedup_window_minutes": max(1, int(raw.get("dedup_window_minutes", 60))),
+        "asset_type": (raw.get("asset_type") or "").strip().lower() or None,
+        "min_criticality": (raw.get("min_criticality") or "").strip().upper() or None,
     }
 
 
 _RULE_COLUMNS = (
     "rule_id", "name", "description", "enabled", "source_type", "severity",
     "threshold", "match_rule_id", "match_category", "min_risk",
-    "min_confidence", "dedup_window_minutes")
+    "min_confidence", "dedup_window_minutes", "asset_type", "min_criticality")
 
 
 def _insert_rule(conn, rule: dict) -> None:
@@ -137,8 +139,8 @@ def evaluate_alerts(job_id: str) -> list[dict]:
             "SELECT id, rule_id, category, entity, severity, risk_score"
             " FROM detections WHERE job_id = ?", (job_id,)).fetchall()]
         incs = [dict(r) for r in conn.execute(
-            "SELECT id, job_id, title, severity, entity, risk_score, category"
-            " FROM correlations WHERE job_id = ?", (job_id,)).fetchall()]
+            "SELECT id, job_id, title, severity, entity, risk_score, category,"
+            " evidence_event_ids_json FROM correlations WHERE job_id = ?", (job_id,)).fetchall()]
 
     # IOCs live in a persistent global watchlist (indicators table): high-
     # confidence indicators alert regardless of the originating job.
@@ -174,10 +176,22 @@ def _candidates(rule: dict, dets: list[dict], incs: list[dict],
                         title_fn=lambda d: rule["name"])
     if st == "incident":
         # Incident rules are gated on min_risk (severity is illustrative).
+        # Per-asset rules additionally gate on the entity's role/criticality.
         out = []
         for i in incs:
             if (i["risk_score"] or 0) < rule["min_risk"]:
                 continue
+            if rule["asset_type"] or rule["min_criticality"]:
+                assets = _assets_for(i)
+                if not assets:
+                    continue
+                if rule["asset_type"] and not any(
+                        a.get("asset_type") == rule["asset_type"] for a in assets):
+                    continue
+                if rule["min_criticality"] and not any(
+                        _criticality_rank(a.get("criticality", "LOW")) >= _criticality_rank(rule["min_criticality"])
+                        for a in assets):
+                    continue
             out.append({
                 "dedup_key": f"{rule['rule_id']}|{i['entity'] or '-'}|inc{i['id']}",
                 "entity": i["entity"] or "-",
@@ -203,6 +217,45 @@ def _candidates(rule: dict, dets: list[dict], incs: list[dict],
 
 def job_id_of(i: dict) -> str:
     return i.get("job_id", "")
+
+
+_CRITICALITY_RANK = {"LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+
+
+def _criticality_rank(value: str) -> int:
+    return _CRITICALITY_RANK.get((value or "").strip().upper(), 0)
+
+
+def _assets_for(inc: dict) -> list[dict]:
+    """Resolve the assets touched by an incident: its attacker entity plus any
+    victim hosts referenced by its correlated evidence (dst-side services)."""
+    from core.assets import asset_of
+    from core.storage import db
+    names: set[str] = {(inc.get("entity") or "").strip() if (inc.get("entity") or "").strip() != "-" else ""}
+    evidence = inc.get("evidence_event_ids_json") or "[]"
+    try:
+        ids = json.loads(evidence)
+    except (TypeError, ValueError):
+        ids = []
+    if isinstance(ids, list) and ids:
+        ev_ids = [str(x) for x in ids if str(x).lstrip("-").isdigit() or str(x).strip()]
+        if ev_ids:
+            with db() as conn:
+                rows = conn.execute(
+                    "SELECT src_ip, dst_ip, hostname FROM events WHERE job_id = ? AND"
+                    " event_id IN (%s)" % ",".join("?" * len(ev_ids)),
+                    (inc.get("job_id"), *ev_ids)).fetchall()
+            for r in rows:
+                for val in (r["dst_ip"], r["src_ip"], r["hostname"]):
+                    if val:
+                        names.add((val or "").strip())
+    names.discard("")
+    out = []
+    for n in names:
+        a = asset_of(n)
+        if a:
+            out.append(a)
+    return out
 
 
 def _grouped(rule: dict, items: list[dict], source_type: str, *,

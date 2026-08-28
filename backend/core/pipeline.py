@@ -21,6 +21,12 @@ from privacy.pii_detector import detect_pii
 
 FLUSH = 2000
 
+_SEVERITY_BUMP = {"LOW": 0, "MEDIUM": 15, "HIGH": 30, "CRITICAL": 45}
+
+
+def _severity_bump(severity: str) -> int:
+    return _SEVERITY_BUMP.get((severity or "").upper(), 0)
+
 
 def _detect(job_id: str, path) -> dict:
     sample_batch = next(iter_line_chunks(path, chunk_lines=400), [])
@@ -78,6 +84,28 @@ def run_job(job_id: str) -> None:
                 ioc_total += len(ev.iocs)
                 for i in ev.iocs:
                     ioc_type_counts[i["type"]] += 1
+            # --- M2: offline GeoIP enrichment for src/dst addresses ---
+            from core.geoip import lookup as geo_lookup
+            if ev.source_ip:
+                geo = geo_lookup(ev.source_ip)
+                if geo:
+                    ev.extras["geo_src"] = geo
+            if ev.destination_ip:
+                geo = geo_lookup(ev.destination_ip)
+                if geo:
+                    ev.extras["geo_dst"] = geo
+            # --- M2: reference threat-intel enrichment (risk bump when hit) ---
+            from core.intel import enrich_event as intel_enrich
+            ref = intel_enrich(ev.source_ip, ev.destination_ip, ev.iocs)
+            if ref:
+                ev.extras["intel_match"] = {
+                    "value": ref["value"], "type": ref["type"],
+                    "threat_type": ref["threat_type"], "severity": ref["severity"],
+                    "confidence": ref["confidence"], "verdict": "malicious" if ref["confidence"] >= 0.9 else "suspicious",
+                }
+                if not ev.threat_type:
+                    ev.threat_type = ref["threat_type"] or "intel_match"
+                ev.risk_score = min(100, ev.risk_score + _severity_bump(ref["severity"]))
             # --- S09: PII detection recorded on the event ---
             ev.pii_detected = sorted({h["type"] for h in detect_pii(ev.message)})
             if ev.pii_detected:
@@ -148,6 +176,10 @@ def run_job(job_id: str) -> None:
             stats_update["incidents"] = len(incidents)
         if stats_update:
             jobs.merge_stats(job_id, **stats_update)
+        # Asset inventory derived from events + detection/incident context;
+        # built before alerting so per-asset alert rules can gate on it.
+        from core.assets import build_assets
+        build_assets(job_id)
         # Alerting runs isolated: a rule problem must never fail ingestion.
         alert_stats = {}
         try:

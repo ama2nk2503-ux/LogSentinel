@@ -1,9 +1,28 @@
 from fastapi import APIRouter, HTTPException
 
+from core import intel
 from core.storage import db
-from intelligence.aggregator import _recommendation, build_intel
+from intelligence.aggregator import build_intel
 
 router = APIRouter()
+
+
+@router.get("/intel/reputation/{value:path}")
+def reputation(value: str):
+    """Reputation verdict for any value (reference feed + sighted indicators)."""
+    return intel.reputation(value)
+
+
+@router.get("/intel/reference")
+def intel_reference():
+    return {"count": len(intel.list_reference()),
+            "indicators": intel.list_reference()}
+
+
+@router.post("/intel/reference/reload")
+def reload_reference():
+    count = intel.reload_intel_reference()
+    return {"reloaded": True, "count": count}
 
 
 @router.get("/intel/{job_id}")

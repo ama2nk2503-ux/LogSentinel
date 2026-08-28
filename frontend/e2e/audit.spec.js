@@ -11,6 +11,8 @@ const PAGES = [
   { path: '/live', name: 'EventWall', markers: ['EVENT WALL'] },
   { path: '/graph', name: 'Graph', markers: ['LIVE ATTACK GRAPH'] },
   { path: '/intel', name: 'Intel', markers: ['THREAT INTELLIGENCE'] },
+  { path: '/compliance', name: 'Compliance', markers: ['COMPLIANCE AUDIT'] },
+  { path: '/assets', name: 'AssetInventory', markers: ['ASSET INVENTORY'] },
   { path: '/privacy', name: 'Privacy', markers: ['PRIVACY POLICY ENGINE'] },
   { path: '/export', name: 'Export', markers: ['SIEM EXPORT'] },
   { path: '/benchmark', name: 'Benchmark', markers: ['BENCHMARK', 'RUN BENCHMARK'] },
@@ -160,6 +162,45 @@ test('Threats/Intel/Graph render with seeded data', async ({ page }) => {
       p === '/threats' ? /ALL RULE MATCHES|WHY WAS THIS DETECTED/ : p === '/intel' ? 'INDICATORS' : /nodes|No entities/,
     )
   }
+})
+
+test('Compliance: seeded job audits to frameworks with PASS/FAIL status', async ({ page }) => {
+  await login(page)
+  await page.goto('/compliance')
+  await selectSeedJob(page)
+  await expect(page.getByText(/controls passed/).first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByText('FAIL', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'VIEW FINDINGS' }).first().click()
+  await expect(page.getByText('CONTROL', { exact: true }).first()).toBeVisible()
+  await expect(openHtml(page)).toContainText(/score \d+\/100/)
+})
+
+test('Assets: seeded job maps source host into inventory', async ({ page }) => {
+  await login(page)
+  await page.goto('/assets')
+  await selectSeedJob(page)
+  await expect(page.getByText(/1 ASSETS/).first()).toBeVisible({ timeout: 60_000 })
+  const row = page.locator('tbody tr').filter({ hasText: 'server' }).first()
+  await expect(row).toBeVisible({ timeout: 15_000 })
+  await expect(row).toContainText('host')
+  await expect(row).toContainText('MEDIUM')
+})
+
+test('Intel: reputation lookup returns verdict', async ({ page }) => {
+  await login(page)
+  await page.goto('/intel')
+  await page.getByRole('tab', { name: 'REPUTATION' }).click()
+  await page.getByLabel('Reputation lookup value').fill('185.23.45.67')
+  await expect(page.getByText('MALICIOUS')).toBeVisible({ timeout: 15_000 })
+})
+
+test('Intel: geo enrichment lookup returns country + kind', async ({ page }) => {
+  await login(page)
+  await page.goto('/intel')
+  await page.getByRole('tab', { name: 'GEO' }).click()
+  await page.getByLabel('Geo lookup IP').fill('185.23.45.67')
+  await expect(page.getByText('Russia')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('PUBLIC')).toBeVisible()
 })
 
 test('Alerts: seeded brute force generates an alert and ack transitions status', async ({ page }) => {

@@ -1,0 +1,46 @@
+# Local, deterministic threat-intelligence reference feed (offline).
+# Ships with the product; used by reputation lookups and per-event
+# enrichment. Real deployments swap this for a TAXII/STIX exchange.
+indicators:
+  - value: "185.23.45.67"
+    type: ipv4
+    threat_type: credential_attack
+    severity: HIGH
+    confidence: 0.92
+    source: "internal-feed"
+    tags: ["ssh-bruteforce", "known-bad"]
+  - value: "198.51.100.7"
+    type: ipv4
+    threat_type: scanner
+    severity: MEDIUM
+    confidence: 0.85
+    source: "internal-feed"
+    tags: ["port-scan", "reconnaissance"]
+  - value: "203.0.113.9"
+    type: ipv4
+    threat_type: web_attack
+    severity: HIGH
+    confidence: 0.88
+    source: "internal-feed"
+    tags: ["sqli", "web-attack"]
+  - value: "45.83.42.99"
+    type: ipv4
+    threat_type: credential_attack
+    severity: HIGH
+    confidence: 0.9
+    source: "internal-feed"
+    tags: ["rdp-bruteforce"]
+  - value: "attack.evil.example"
+    type: domain
+    threat_type: command_and_control
+    severity: CRITICAL
+    confidence: 0.97
+    source: "internal-feed"
+    tags: ["c2", "malware"]
+  - value: "590b972e56e9dec8e5db5f4205b717ec"
+    type: md5
+    threat_type: malware
+    severity: CRITICAL
+    confidence: 0.95
+    source: "internal-feed"
+    tags: ["emotet-variant"]

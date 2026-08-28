@@ -167,6 +167,46 @@ CREATE TABLE IF NOT EXISTS benchmarks (
     results_json TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS intel_reference (
+    value TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    threat_type TEXT DEFAULT '',
+    severity TEXT DEFAULT 'LOW',
+    confidence REAL DEFAULT 0.0,
+    source TEXT DEFAULT '',
+    tags_json TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    entity_type TEXT DEFAULT '',
+    asset_type TEXT DEFAULT 'unknown',
+    criticality TEXT DEFAULT 'LOW',
+    risk_score INTEGER DEFAULT 0,
+    detections_count INTEGER DEFAULT 0,
+    incidents_count INTEGER DEFAULT 0,
+    first_seen TEXT,
+    last_seen TEXT,
+    tags_json TEXT DEFAULT '[]',
+    metadata_json TEXT DEFAULT '{}',
+    UNIQUE (job_id, name)
+);
+CREATE INDEX IF NOT EXISTS ix_assets_job ON assets(job_id);
+
+CREATE TABLE IF NOT EXISTS audits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL,
+    framework TEXT NOT NULL,
+    status TEXT NOT NULL,
+    summary_json TEXT DEFAULT '{}',
+    findings_json TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_audit ON audits(job_id, framework);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -206,6 +246,8 @@ _COLUMN_MIGRATIONS = [
     ("correlations", "false_positive", "INTEGER DEFAULT 0"),
     ("correlations", "acknowledged_at", "TEXT"),
     ("correlations", "resolved_at", "TEXT"),
+    ("alert_rules", "asset_type", "TEXT"),
+    ("alert_rules", "min_criticality", "TEXT"),
 ]
 
 

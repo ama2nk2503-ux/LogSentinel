@@ -64,3 +64,21 @@ rules:
     severity: HIGH
     min_confidence: 0.9
     dedup_window_minutes: 60
+
+  - rule_id: ALERT_ASSET_WEB_ATTACK
+    name: Web Asset Under Attack
+    description: Incident gated on a WEB asset being implicated (attacker or victim-side).
+    source_type: incident
+    severity: HIGH
+    min_risk: 40
+    asset_type: web
+    dedup_window_minutes: 60
+
+  - rule_id: ALERT_CRITICAL_ASSET_INCIDENT
+    name: Critical Asset Incident
+    description: Any incident touching a CRITICAL-critarity asset.
+    source_type: incident
+    severity: HIGH
+    min_risk: 45
+    min_criticality: CRITICAL
+    dedup_window_minutes: 60

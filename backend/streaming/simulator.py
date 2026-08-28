@@ -95,6 +95,28 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
                 flags = detect_suspicious(ev.message)
                 if flags:
                     ev.extras["suspicious"] = flags
+                from core.geoip import lookup as geo_lookup
+                if ev.source_ip:
+                    geo = geo_lookup(ev.source_ip)
+                    if geo:
+                        ev.extras["geo_src"] = geo
+                if ev.destination_ip:
+                    geo = geo_lookup(ev.destination_ip)
+                    if geo:
+                        ev.extras["geo_dst"] = geo
+                from core.intel import enrich_event as intel_enrich
+                ref = intel_enrich(ev.source_ip, ev.destination_ip, ev.iocs)
+                if ref:
+                    ev.extras["intel_match"] = {
+                        "value": ref["value"], "type": ref["type"],
+                        "threat_type": ref["threat_type"], "severity": ref["severity"],
+                        "confidence": ref["confidence"],
+                        "verdict": "malicious" if ref["confidence"] >= 0.9 else "suspicious",
+                    }
+                    if not ev.threat_type:
+                        ev.threat_type = ref["threat_type"] or "intel_match"
+                    ev.risk_score = min(100, ev.risk_score + {"LOW": 0, "MEDIUM": 15,
+                                                              "HIGH": 30, "CRITICAL": 45}.get(ref["severity"], 0))
                 ev.pii_detected = sorted({h["type"] for h in detect_pii(ev.message)})
                 batch.append((ev, raw))
             with db() as conn:
@@ -114,6 +136,8 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
             if _state["lines_emitted"] % (lines_per_tick * 3) < lines_per_tick:
                 await asyncio.to_thread(evaluate_job, job_id)
                 await asyncio.to_thread(build_incidents, job_id)
+                from core.assets import build_assets
+                await asyncio.to_thread(build_assets, job_id)
                 await asyncio.to_thread(build_intel, job_id)
                 await asyncio.to_thread(evaluate_alerts, job_id)
                 total = None
