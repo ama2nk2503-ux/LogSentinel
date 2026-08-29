@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { memo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import PageHeader from '../components/PageHeader.jsx'
+import SpotlightCard from '../components/bits/SpotlightCard.jsx'
 import { api } from '../lib/api.js'
 
 const Bar = memo(function Bar({ value }) {
@@ -19,10 +20,10 @@ const Bar = memo(function Bar({ value }) {
 
 const Section = memo(function Section({ title, children }) {
   return (
-    <div className="border border-slate-800 rounded p-4 bg-slate-900/40">
+    <SpotlightCard className="!p-4">
       <div className="text-[10px] tracking-widest text-slate-500 mb-3">{title}</div>
       <div className="space-y-2">{children}</div>
-    </div>
+    </SpotlightCard>
   )
 })
 
@@ -151,7 +152,7 @@ export default function Benchmark() {
             <Section title="PERFORMANCE (measured)">
               <KV k="Lines processed" v={(r.performance.lines_processed ?? 0).toLocaleString()} />
               <KV k="Wall time" v={`${r.performance.wall_seconds ?? 0}s`} />
-              <KV k="Throughput" v={<b className="text-emerald-400">{(r.performance.throughput_lps ?? 0).toLocaleString()} lines/sec</b>} />
+              <KV k="Throughput" v={<b className="text-emerald-400 glow-text">{(r.performance.throughput_lps ?? 0).toLocaleString()} lines/sec</b>} />
               <KV k="Peak RSS" v={`${r.performance.peak_rss_mb ?? 0} MB (baseline ${r.performance.rss_baseline_mb ?? 0} MB)`} />
               <KV k="CPU (process)" v={`${r.performance.cpu_process_seconds ?? 0}s`} />
             </Section>

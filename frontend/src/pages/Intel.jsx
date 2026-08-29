@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
+import SpotlightCard from '../components/bits/SpotlightCard.jsx'
 import { api } from '../lib/api.js'
 
 const SEV_COLOR = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#3b82f6' }
@@ -198,7 +199,7 @@ export default function Intel() {
                     </div>
                     {repValue && !repQuery.data && repQuery.isFetching && <Skeleton rows={4} className="mt-2" />}
                     {repQuery.data && (
-                        <div className="border border-slate-800 rounded bg-slate-900/40 p-4 space-y-3">
+                        <SpotlightCard className="!p-4 space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm break-all text-purple-300">{repQuery.data.value}</span>
                                 <Verdict verdict={repQuery.data.verdict} />
@@ -214,7 +215,7 @@ export default function Intel() {
                                     {repQuery.data.sightings.length} SIGHTING(S) · {repQuery.data.related_events} RELATED EVENTS
                                 </div>
                             )}
-                        </div>
+                        </SpotlightCard>
                     )}
                 </div>
             )}
@@ -232,7 +233,7 @@ export default function Intel() {
                     </div>
                     {geoIp && !geoQuery.data && geoQuery.isFetching && <Skeleton rows={4} className="mt-2" />}
                     {geoQuery.data && geoQuery.data.kind !== 'unknown' && (
-                        <div className="border border-slate-800 rounded bg-slate-900/40 p-4 space-y-3">
+                        <SpotlightCard className="!p-4 space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm break-all text-emerald-300">{geoQuery.data.ip}</span>
                                 <span className="text-[11px] tracking-wider text-slate-500">{geoQuery.data.kind.toUpperCase()}</span>
@@ -243,7 +244,7 @@ export default function Intel() {
                                 <div className="text-slate-500">ASN / ORG<span className="block text-slate-200">{geoQuery.data.asn} {geoQuery.data.org}</span></div>
                                 <div className="text-slate-500">POSITION<span className="block text-slate-400">{geoQuery.data.latitude}, {geoQuery.data.longitude}</span></div>
                             </div>
-                        </div>
+                        </SpotlightCard>
                     )}
                     {geoQuery.data && geoQuery.data.kind === 'unknown' && (
                         <div className="text-sm text-slate-500">No offline record for <b className="text-slate-300">{geoQuery.data.ip}</b>.</div>

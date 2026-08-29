@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, apiText } from '../lib/api.js'
 import PageHeader from '../components/PageHeader.jsx'
+import Aurora from '../components/bits/Aurora.jsx'
+import StarBorder from '../components/bits/StarBorder.jsx'
+import SplitFlapText from '../components/bits/SplitFlapText.jsx'
+import CountUp from '../components/bits/CountUp.jsx'
 
 const SCENARIOS = [
     { file: 'scenario1_ssh_bruteforce.log', label: 'SSH Brute Force → Account Compromise' },
@@ -95,51 +99,74 @@ export default function Demo() {
     useEffect(() => () => { cancelled.current = true }, [])
 
     return (
-        <div className="p-4 md:p-6 lg:p-8">
-            <PageHeader title="CINEMATIC DEMO MODE" subtitle="Runs the four attack scenarios end-to-end through the real pipeline — every number shown is computed live." />
+        <div className="relative min-h-full">
+            <div className="absolute inset-0" aria-hidden="true">
+                <Aurora speed={0.8} amplitude={1.1} />
+            </div>
+            <div className="absolute inset-0 bg-bg-sunken/60" aria-hidden="true" />
+            <div className="relative p-4 md:p-6 lg:p-8">
+                <PageHeader title="CINEMATIC DEMO MODE" subtitle="Runs the four attack scenarios end-to-end through the real pipeline — every number shown is computed live." />
 
-            {!running && !done && (
-                <button onClick={run}
-                        className="btn btn-primary px-8 py-3 relative overflow-hidden">
-                    ▶ START FULL PIPELINE DEMO
-                </button>
-            )}
-            {running && (
-                <button onClick={stop}
-                        className="btn btn-danger px-6 py-2 text-xs">
-                    ■ STOP
-                </button>
-            )}
-
-            {running && (
-                <div className="mt-6 border border-emerald-800 rounded-lg bg-black/60 p-5 font-mono text-[12px] leading-6 max-w-2xl">
-                    <div className="flex gap-1.5 mb-3" role="progressbar" aria-valuemin={0} aria-valuemax={SCENARIOS.length} aria-valuenow={Math.min(step + 1, SCENARIOS.length)} aria-label="Demo pipeline progress">
-                        {SCENARIOS.map((_, i) => (
-                            <span key={i} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-emerald-500' : i === step ? 'bg-emerald-400 animate-pulse' : 'bg-slate-700'}`} />
+                <div className="mb-6 max-w-2xl">
+                    <div className="label mb-2">SCENARIOS QUEUED</div>
+                    <div className="scroll-list no-scrollbar">
+                        {SCENARIOS.map((s) => (
+                            <div key={s.file} className="item">
+                                <p className="item-text">{s.label}</p>
+                            </div>
                         ))}
                     </div>
-                    <div className="text-slate-500 mb-1">STAGE: <span className="text-emerald-400">{stage}</span></div>
-                    {narration.slice(-14).map((l, i) => (
-                        <div key={i} className={l.startsWith('⚠') ? 'text-orange-300' : l.startsWith('★') ? 'text-emerald-400 font-bold' : l.startsWith('▶') ? 'text-sky-300 font-bold mt-2' : 'text-slate-300'} aria-live="polite">
-                            {l}
-                        </div>
-                    ))}
                 </div>
-            )}
 
-            {done && (
-                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl">
-                    {[['TOTAL EVENTS', done.events], ['IOCS EXTRACTED', done.iocs],
-                      ['THREAT INCIDENTS', done.threats], ['PII EVENTS', done.pii]].map(([k, v]) => (
-                        <div key={k} className="border border-slate-800 bg-slate-900/60 rounded p-4 text-center">
-                            <div className="text-2xl font-bold text-emerald-400">{v}</div>
-                            <div className="text-[10px] tracking-widest text-slate-500 mt-1">{k}</div>
+                {!running && !done && (
+                    <StarBorder speed="4s" onClick={run}>
+                        <span className="text-sm tracking-widest font-bold text-emerald-300">▶ START FULL PIPELINE DEMO</span>
+                    </StarBorder>
+                )}
+                {running && (
+                    <button onClick={stop}
+                            className="btn btn-danger px-6 py-2 text-xs">
+                        ■ STOP
+                    </button>
+                )}
+
+                {running && (
+                    <div className="mt-6 border border-emerald-800 rounded-lg bg-black/60 p-5 font-mono text-[12px] leading-6 max-w-2xl shadow-[0_0_24px_rgba(16,185,129,0.12)]">
+                        <div className="flex gap-1.5 mb-3" role="progressbar" aria-valuemin={0} aria-valuemax={SCENARIOS.length} aria-valuenow={Math.min(step + 1, SCENARIOS.length)} aria-label="Demo pipeline progress">
+                            {SCENARIOS.map((_, i) => (
+                                <span key={i} className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-emerald-500' : i === step ? 'bg-emerald-400 animate-pulse' : 'bg-slate-700'}`} />
+                            ))}
                         </div>
-                    ))}
-                </div>
-            )}
+                        <div className="flex items-center gap-3 mb-2">
+                            <span className="text-slate-500">STAGE:</span>
+                            <span aria-live="polite">
+                                <SplitFlapText text={stage} fontSize={16} gap={4} tileRadius={5} padTo={10} flipDuration={0.09} stagger={0.03} loop={false} />
+                            </span>
+                        </div>
+                        {narration.slice(-14).map((l, i) => (
+                            <div key={i} className={l.startsWith('⚠') ? 'text-orange-300' : l.startsWith('★') ? 'text-emerald-400 font-bold' : l.startsWith('▶') ? 'text-sky-300 font-bold mt-2' : 'text-slate-300'} aria-live="polite">
+                                {l}
+                            </div>
+                        ))}
+                    </div>
+                )}
 
-            {error && <div className="mt-4 text-sm text-red-400" role="alert">{error}</div>}
-</div>
-  )
+                {done && (
+                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl">
+                        {[['TOTAL EVENTS', done.events], ['IOCS EXTRACTED', done.iocs],
+                          ['THREAT INCIDENTS', done.threats], ['PII EVENTS', done.pii]].map(([k, v]) => (
+                            <div key={k} className="border border-emerald-900/70 bg-slate-900/60 rounded p-4 text-center shadow-[0_0_16px_rgba(16,185,129,0.10)]">
+                                <div className="text-2xl font-bold text-emerald-400 font-mono">
+                                    <CountUp to={v} duration={1.2} />
+                                </div>
+                                <div className="text-[10px] tracking-widest text-slate-500 mt-1">{k}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {error && <div className="mt-4 text-sm text-red-400" role="alert">{error}</div>}
+            </div>
+        </div>
+    )
 }

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'motion/react'
 import PageHeader from '../components/PageHeader.jsx'
+import CountUp from '../components/bits/CountUp.jsx'
+import StarBorder from '../components/bits/StarBorder.jsx'
 import { api, classNames } from '../lib/api.js'
 
 const SEV_STYLE = {
@@ -65,18 +68,19 @@ export default function Live() {
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
         {!running ? (
-          <button onClick={() => start.mutate()} disabled={start.isPending}
-                  className="btn btn-primary px-4 py-2 text-xs">▶ START STREAM</button>
+          <StarBorder speed="4s" onClick={() => start.mutate()} disabled={start.isPending}>
+            <span className="text-xs tracking-widest font-bold text-emerald-300">▶ START STREAM</span>
+          </StarBorder>
         ) : (
           <button onClick={() => stop.mutate()} disabled={stop.isPending}
                   className="btn btn-danger px-4 py-2 text-xs">■ STOP STREAM</button>
         )}
         <span className={classNames('px-2 py-1 rounded text-[10px] tracking-widest border',
-          running ? 'text-red-300 border-red-800 bg-red-950/30' : 'text-slate-500 border-slate-700')}>
+          running ? 'text-red-300 border-red-800 bg-red-950/40 shadow-[0_0_12px_rgba(239,68,68,0.25)]' : 'text-slate-500 border-slate-700')}>
           {running ? '● LIVE' : '○ STANDBY'}
         </span>
         <span className="text-[10px] text-slate-500">
-          {recents?.lines_emitted ?? 0} lines · job {recents?.job_id?.slice(0, 8) || '—'}
+          <CountUp to={recents?.lines_emitted ?? 0} duration={0.8} className="text-emerald-400 font-mono font-bold" /> lines · job {recents?.job_id?.slice(0, 8) || '—'}
         </span>
         <label className="flex items-center gap-2 text-[11px] text-slate-400 ml-auto">
           <input type="checkbox" checked={autoScroll} onChange={(e) => setAutoScroll(e.target.checked)}
@@ -85,15 +89,19 @@ export default function Live() {
         </label>
       </div>
 
-      <div ref={wallRef} tabIndex={0} className="h-[60vh] overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/40 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
-           aria-label="Live event wall">
+      <div ref={wallRef} tabIndex={0} className={classNames("h-[60vh] overflow-y-auto border rounded-lg bg-slate-950/40 focus:outline-none focus:ring-2 focus:ring-emerald-600/40",
+               running ? 'border-emerald-800/70 glow-ring' : 'border-slate-800')}
+           aria-label="Live event wall"
+           aria-live="polite">
         {events.length === 0 && (
           <div className="p-8 text-center text-sm text-slate-500">
             No events yet. Start a stream or the wall will show the most recent dataset.
           </div>
         )}
         {events.map((e) => (
-          <div key={e.event_id} className="flex border-b border-slate-800/50 text-xs">
+          <motion.div key={e.event_id} initial={{ y: 8 }} animate={{ y: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeOut' }}
+                      className="flex border-b border-slate-800/50 text-xs">
             <span className={classNames('shrink-0 w-1', SEV_BAR[e.severity] || 'bg-slate-600')} aria-hidden="true" />
             <div className="flex-1 px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 min-w-0">
               <span className="text-slate-500 whitespace-nowrap text-[10px]">
@@ -109,7 +117,7 @@ export default function Live() {
               {e.threat_type && <span className="text-red-300 text-[10px]">{e.threat_type}</span>}
               <span className="text-slate-300 truncate flex-1 min-w-0">{e.message}</span>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

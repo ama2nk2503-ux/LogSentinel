@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
+import SpotlightCard from '../components/bits/SpotlightCard.jsx'
 import { api } from '../lib/api.js'
 
 const STATUS_COLOR = { PASS: '#22c55e', WARN: '#eab308', FAIL: '#ef4444' }
@@ -44,10 +45,10 @@ export default function Compliance() {
                         {[['PASSED', data.summary.passed, '#22c55e'],
                           ['WARNED', data.summary.warned, '#eab308'],
                           ['FAILED', data.summary.failed, '#ef4444']].map(([label, n, color]) => (
-                            <div key={label} className="border border-slate-800 rounded bg-slate-900/40 p-3 text-center">
-                                <div className="text-lg font-bold" style={{ color }}>{n}</div>
+                            <SpotlightCard key={label} className="!p-3 text-center">
+                                <div className="text-lg font-bold glow-text" style={{ color }}>{n}</div>
                                 <div className="text-[10px] tracking-widest text-slate-500">{label}</div>
-                            </div>
+                            </SpotlightCard>
                         ))}
                     </div>
 

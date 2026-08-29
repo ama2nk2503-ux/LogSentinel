@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ShieldAlert } from 'lucide-react'
 import PageHeader from '../components/PageHeader.jsx'
+import Aurora from '../components/bits/Aurora.jsx'
+import SpotlightCard from '../components/bits/SpotlightCard.jsx'
 import { api, apiForm, apiText, classNames } from '../lib/api.js'
 
 const ACCEPT = '.log,.txt,.json,.csv,.xml'
@@ -70,35 +73,44 @@ export default function Upload() {
   }, [navigate])
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto">
+    <div className="relative min-h-full">
+      <div className="absolute inset-0" aria-hidden="true">
+        <Aurora speed={0.8} amplitude={1.1} />
+      </div>
+      <div className="absolute inset-0 bg-bg-sunken/60" aria-hidden="true" />
+      <div className="relative p-4 md:p-6 lg:p-8 max-w-3xl mx-auto">
       <PageHeader title="UPLOAD CYBER LOGS" subtitle="Universal ingestion · format auto-detection · SIEM-ready intelligence" />
 
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Upload log files — click or drag and drop log files here"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.current?.click() } }}
-        className={classNames(
-          'border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors focus-visible:border-emerald-400',
-          dragging ? 'border-emerald-400 bg-emerald-400/10' : 'border-slate-700 hover:border-slate-500 bg-slate-900/40',
-        )}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); uploadFiles(e.dataTransfer.files) }}
-        onClick={() => fileInput.current?.click()}
-      >
-        <div className="text-4xl mb-3" aria-hidden="true">🛡️</div>
-        <div className="text-slate-300 mb-2">{busy ? 'Processing…' : 'Drag & Drop log files here'}</div>
-        <div className="text-xs text-slate-500 tracking-widest">LOG · TXT · JSON · CSV · XML</div>
-        <input
-          ref={fileInput}
-          type="file"
-          multiple
-          accept={ACCEPT}
-          className="hidden"
-          onChange={(e) => uploadFiles(e.target.files)}
-        />
-      </div>
+      <SpotlightCard className="rounded-xl">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Upload log files — click or drag and drop log files here"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.current?.click() } }}
+          className={classNames(
+            'border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors focus-visible:border-emerald-400',
+            dragging ? 'border-emerald-400 bg-emerald-400/10 shadow-[0_0_28px_rgba(16,185,129,0.25)]' : 'border-slate-700 hover:border-slate-500 bg-slate-900/40',
+          )}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); uploadFiles(e.dataTransfer.files) }}
+          onClick={() => fileInput.current?.click()}
+        >
+          <div className="mb-3 flex justify-center" aria-hidden="true">
+            <ShieldAlert size={44} strokeWidth={1.5} className="text-emerald-400/80 drop-shadow-[0_0_14px_rgba(52,211,153,0.5)]" />
+          </div>
+          <div className="text-slate-300 mb-2">{busy ? 'Processing…' : 'Drag & Drop log files here'}</div>
+          <div className="text-xs text-slate-500 tracking-widest">LOG · TXT · JSON · CSV · XML</div>
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept={ACCEPT}
+            className="hidden"
+            onChange={(e) => uploadFiles(e.target.files)}
+          />
+        </div>
+      </SpotlightCard>
 
       {error && <div className="mt-4 alert-error" role="alert">{error}</div>}
 
@@ -144,6 +156,7 @@ export default function Upload() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

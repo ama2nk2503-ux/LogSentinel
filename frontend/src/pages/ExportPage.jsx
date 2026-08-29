@@ -39,8 +39,8 @@ export default function ExportPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-5">
                 {FORMATS.map((f) => (
                     <button key={f.id} onClick={() => { setFmt(f.id); setError('') }} disabled={!jobId}
-                            className={`p-3 border rounded text-left transition-colors disabled:opacity-40 ${
-                                fmt === f.id ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800 hover:border-slate-600'}`}>
+                            className={`p-3 border rounded text-left transition-all disabled:opacity-40 ${
+                                fmt === f.id ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_16px_rgba(16,185,129,0.12)]' : 'border-slate-800 hover:border-slate-600'}`}>
                         <div className={`text-sm font-bold ${fmt === f.id ? 'text-emerald-400' : 'text-slate-200'}`}>{f.label}</div>
                         <div className="text-[10px] text-slate-500 mt-0.5">{f.desc}</div>
                     </button>

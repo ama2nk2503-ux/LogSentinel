@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
   --color-bg-base: #0a0a0f;
   --color-bg-surface: #12121a;
   --color-bg-elevated: #1e1e2a;
@@ -11,7 +14,10 @@
   --color-text-secondary: #94a3b8;
   --color-text-muted: #8b98ab;
   --color-accent: #34d399;
+  --color-accent-cyan: #22d3ee;
+  --color-accent-violet: #8b5cf6;
   --color-accent-dim: rgba(52, 211, 153, 0.1);
+  --color-glow: rgba(52, 211, 153, 0.35);
   --color-danger: #ef4444;
   --color-warning: #eab308;
   --color-slate-500: #8b98ab;
@@ -25,7 +31,8 @@
 body {
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 ::-webkit-scrollbar {
@@ -83,4 +90,12 @@ body {
   .table-cell {
     @apply px-3 py-1.5 border-t border-slate-800/60;
   }
+}
+
+.glow-text {
+  text-shadow: 0 0 12px var(--color-glow), 0 0 36px rgba(52, 211, 153, 0.25);
+}
+
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.4), 0 0 28px rgba(52, 211, 153, 0.16);
 }

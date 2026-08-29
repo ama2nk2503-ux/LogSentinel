@@ -1,0 +1,73 @@
+.scroll-list-container {
+  position: relative;
+  width: 100%;
+}
+
+.scroll-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.scroll-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-list::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+.scroll-list::-webkit-scrollbar-thumb {
+  background: #1e1e2a;
+  border-radius: 4px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.item {
+  padding: 14px 16px;
+  background-color: #1a1a24;
+  border: 1px solid #26263a;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+}
+
+.item.selected {
+  background-color: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.item-text {
+  color: #e2e8f0;
+  margin: 0;
+  font-size: 13px;
+}
+
+.top-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(to bottom, #0a0a0f, transparent);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.bottom-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(to top, #0a0a0f, transparent);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}

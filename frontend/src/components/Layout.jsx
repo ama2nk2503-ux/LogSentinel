@@ -1,22 +1,40 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import {
+  Activity,
+  Bell,
+  Clapperboard,
+  Download,
+  Gauge,
+  Globe,
+  Lock,
+  Network,
+  RadioTower,
+  Scale,
+  ScrollText,
+  Server,
+  Shield,
+  ShieldAlert,
+  Upload,
+} from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
+import GlitchText from './bits/GlitchText.jsx'
 
 const links = [
-  { to: '/', label: 'UPLOAD', end: true },
-  { to: '/demo', label: '★ DEMO MODE' },
-  { to: '/dashboard', label: 'DASHBOARD' },
-  { to: '/explorer', label: 'LOG EXPLORER' },
-  { to: '/threats', label: 'THREATS' },
-  { to: '/alerts', label: 'ALERTS' },
-  { to: '/live', label: 'EVENT WALL' },
-  { to: '/graph', label: 'ATTACK GRAPH' },
-  { to: '/intel', label: 'INTEL' },
-  { to: '/compliance', label: 'COMPLIANCE' },
-  { to: '/assets', label: 'ASSET INVENTORY' },
-  { to: '/privacy', label: 'PRIVACY' },
-  { to: '/export', label: 'EXPORT' },
-  { to: '/benchmark', label: 'BENCHMARK' },
+  { to: '/', label: 'UPLOAD', end: true, icon: Upload },
+  { to: '/demo', label: '★ DEMO MODE', icon: Clapperboard },
+  { to: '/dashboard', label: 'DASHBOARD', icon: Gauge },
+  { to: '/explorer', label: 'LOG EXPLORER', icon: ScrollText },
+  { to: '/threats', label: 'THREATS', icon: ShieldAlert },
+  { to: '/alerts', label: 'ALERTS', icon: Bell },
+  { to: '/live', label: 'EVENT WALL', icon: RadioTower },
+  { to: '/graph', label: 'ATTACK GRAPH', icon: Network },
+  { to: '/intel', label: 'INTEL', icon: Globe },
+  { to: '/compliance', label: 'COMPLIANCE', icon: Scale },
+  { to: '/assets', label: 'ASSET INVENTORY', icon: Server },
+  { to: '/privacy', label: 'PRIVACY', icon: Lock },
+  { to: '/export', label: 'EXPORT', icon: Download },
+  { to: '/benchmark', label: 'BENCHMARK', icon: Activity },
 ]
 
 export default function Layout() {
@@ -48,27 +66,44 @@ export default function Layout() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="px-5 py-5 border-b border-slate-700">
-          <div className="text-emerald-400 font-bold text-lg tracking-widest">LOGSENTINEL</div>
-          <div className="text-[10px] text-text-muted tracking-wider mt-1">RAW LOGS IN · INTELLIGENCE OUT</div>
+          <div className="flex items-center gap-2 text-emerald-400">
+            <Shield size={18} strokeWidth={2} />
+            <GlitchText speed={0.9} enableOnHover className="font-bold text-lg tracking-widest glow-text">
+              LOGSENTINEL
+            </GlitchText>
+          </div>
+          <div className="text-[10px] text-text-muted tracking-wider mt-1.5">RAW LOGS IN · INTELLIGENCE OUT</div>
         </div>
         <nav className="flex-1 py-3 overflow-y-auto" aria-label="Main navigation">
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.end}
-              aria-current={({ isActive }) => isActive ? 'page' : undefined}
-              className={({ isActive }) =>
-                `block px-5 py-2.5 text-xs tracking-wider transition-colors ${
-                  isActive
-                    ? 'text-emerald-400 bg-emerald-500/10 border-r-2 border-emerald-400'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-slate-700/40'
-                }`
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
+          {links.map((l) => {
+            const Icon = l.icon
+            return (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.end}
+                aria-current={({ isActive }) => (isActive ? 'page' : undefined)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2.5 text-xs tracking-wider transition-colors ${
+                    isActive
+                      ? 'text-emerald-300 bg-emerald-500/10 border-r-2 border-emerald-400'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-slate-700/40'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      size={15}
+                      strokeWidth={1.75}
+                      className={isActive ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]' : 'opacity-70'}
+                    />
+                    <span>{l.label}</span>
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
         <div className="px-5 py-4 border-t border-slate-700 flex items-center justify-between">
           <div className="text-[10px] text-text-muted">SIH26156 · v0.1.0</div>
@@ -98,10 +133,13 @@ export default function Layout() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="ml-3 text-emerald-400 font-bold text-sm tracking-widest">LOGSENTINEL</span>
+          <span className="ml-3 flex items-center gap-2 text-emerald-400 font-bold text-sm tracking-widest">
+            <Shield size={15} strokeWidth={2} />
+            LOGSENTINEL
+          </span>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

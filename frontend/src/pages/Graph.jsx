@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
 import PageHeader from '../components/PageHeader.jsx'
+import CountUp from '../components/bits/CountUp.jsx'
 import { api } from '../lib/api.js'
 
 const SEV_COLOR = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#3b82f6' }
@@ -95,7 +96,8 @@ export default function Graph() {
         <JobPicker value={jobId} onChange={setJobId} />
         {graph && (
           <span className="text-[11px] text-slate-500">
-            {graph.nodes.length} nodes · {graph.edges.length} links ·{' '}
+            <CountUp to={graph.nodes.length} duration={0.8} className="text-emerald-400 font-mono font-bold" /> nodes ·{' '}
+            <CountUp to={graph.edges.length} duration={0.8} className="text-emerald-400 font-mono font-bold" /> links ·{' '}
             <span className="text-red-400">red ring = flagged entity</span>
           </span>
         )}
@@ -126,9 +128,10 @@ export default function Graph() {
             style={{
               position: 'absolute',
               inset: 0,
-              border: '1px solid #374151',
+              border: '1px solid #10b98155',
               borderRadius: '0.5rem',
               background: 'rgba(31,41,55,0.8)',
+              boxShadow: 'inset 0 0 40px rgba(16,185,129,0.06), 0 0 24px rgba(16,185,129,0.10)',
             }}
           />
 

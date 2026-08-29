@@ -9,13 +9,15 @@ import {
 } from 'recharts'
 import { api, apiDownload } from '../lib/api.js'
 import PageHeader from '../components/PageHeader.jsx'
+import SpotlightCard from '../components/bits/SpotlightCard.jsx'
+import CountUp from '../components/bits/CountUp.jsx'
 
 const SEV_COLORS = { LOW: '#3b82f6', MEDIUM: '#eab308', HIGH: '#f97316', CRITICAL: '#ef4444', UNKNOWN: '#475569' }
 const PIE_COLORS = ['#10b981', '#3b82f6', '#a855f7', '#f97316', '#ef4444', '#14b8a6', '#eab308']
 
 const Card = memo(function Card({ label, value, tone = 'slate' }) {
   const tones = {
-    slate: 'text-slate-100',
+    slate: 'text-emerald-400',
     green: 'text-emerald-400',
     orange: 'text-orange-400',
     red: 'text-red-400',
@@ -23,10 +25,10 @@ const Card = memo(function Card({ label, value, tone = 'slate' }) {
     purple: 'text-purple-400',
   }
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded p-4">
+    <SpotlightCard className="rounded-xl !p-4">
       <div className="text-[10px] tracking-widest text-slate-500 mb-2">{label}</div>
-      <div className={`text-2xl font-bold ${tones[tone]}`}>{value ?? 0}</div>
-    </div>
+      <CountUp to={value ?? 0} duration={1.0} className={`text-2xl font-bold font-mono glow-text ${tones[tone]}`} />
+    </SpotlightCard>
   )
 })
 
@@ -66,8 +68,7 @@ export default function Dashboard() {
   if (!jobId) {
     return (
       <div className="p-4 md:p-6 lg:p-8">
-        <PageHeader title="SOC DASHBOARD" />
-        <div className="text-sm text-slate-500 mb-3">Select a processed dataset:</div>
+        <PageHeader title="SOC DASHBOARD" subtitle="Select a processed dataset to view telemetry" />
         <JobPicker value={jobId} onChange={setJobId} />
       </div>
     )

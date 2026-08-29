@@ -28,7 +28,7 @@ export default function Assets() {
             {data && (
                 <>
                     <div className="flex flex-wrap items-center gap-3 mb-5 text-[12px]">
-                        <span className="text-slate-300 font-bold text-xs tracking-widest">{data.total} ASSETS</span>
+                        <span className="text-slate-300 font-bold text-xs tracking-widest glow-text">{data.total} ASSETS</span>
                         {Object.entries(data.by_criticality).map(([c, n]) => (
                             <span key={c} className="flex items-center gap-1" style={{ color: CRIT_COLOR[c] }}>
                                 <b>{n}</b> {c}
