@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     rules_dir: Path = BASE_DIR / "rules"
     policy_path: Path = BASE_DIR / "rules" / "privacy_policy.yaml"
     attack_mapping_path: Path = BASE_DIR / "rules" / "attack_mapping.json"
-    max_upload_mb: int = 200
-    chunk_lines: int = 5000
+    max_upload_mb: int = 700
+    chunk_lines: int = 5120
     allowed_extensions: frozenset = frozenset({".log", ".txt", ".json", ".csv", ".xml"})
     cors_origins: list[str] = [
         "http://localhost:5173",
