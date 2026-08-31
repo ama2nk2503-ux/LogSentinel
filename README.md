@@ -55,10 +55,10 @@ cd ..
 
 # Terminal 2 — Frontend (http://127.0.0.1:5173)
 cd frontend && npm run dev
+if this does not work try opening it using cmd not Powershell
 ```
 
 Open **http://127.0.0.1:5173**, login with `admin` / `changeme`.
-
 ---
 
 ## Architecture
