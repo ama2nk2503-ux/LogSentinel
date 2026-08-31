@@ -54,11 +54,11 @@ export default function Compliance() {
 
                     <div className="space-y-4">
                         {data.frameworks.map((fw) => (
-                            <div key={fw.name} className="border border-slate-800 rounded bg-slate-900/40">
+                            <div key={fw.framework} className="border border-slate-800 rounded bg-slate-900/40">
                                 <div className="px-4 py-3 flex items-center justify-between flex-wrap gap-2">
                                     <div>
                                         <div className="text-sm text-slate-100">
-                                            <b>{fw.name}</b>
+                                            <b>{fw.framework}</b>
                                             <span style={{ color: STATUS_COLOR[fw.status] }} className="ml-3">
                                                 {fw.status}
                                             </span>
@@ -69,21 +69,21 @@ export default function Compliance() {
                                     </div>
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => setOpenReport(openReport === fw.name ? null : fw.name)}
-                                            aria-expanded={openReport === fw.name}
+                                            onClick={() => setOpenReport(openReport === fw.framework ? null : fw.framework)}
+                                            aria-expanded={openReport === fw.framework}
                                             className="text-[11px] text-emerald-400 hover:text-emerald-300"
                                         >
-                                            {openReport === fw.name ? 'HIDE FINDINGS' : 'VIEW FINDINGS'}
+                                            {openReport === fw.framework ? 'HIDE FINDINGS' : 'VIEW FINDINGS'}
                                         </button>
                                         <button
-                                            onClick={() => downloadMarkdown(fw.name)}
+                                            onClick={() => downloadMarkdown(fw.framework)}
                                             className="text-[11px] text-sky-400 hover:text-sky-300"
                                         >
                                             DOWNLOAD .MD
                                         </button>
                                     </div>
                                 </div>
-                                {openReport === fw.name && (
+                                {openReport === fw.framework && (
                                     <div className="overflow-x-auto border-t border-slate-800">
                                         <table className="w-full text-xs min-w-[560px]">
                                             <thead className="bg-slate-900/80 text-slate-500">

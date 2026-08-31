@@ -25,6 +25,13 @@ export default function Live() {
   const [autoScroll, setAutoScroll] = useState(true)
   const wallRef = useRef(null)
 
+  const handleScroll = () => {
+    const el = wallRef.current
+    if (!el) return
+    const nearTop = el.scrollTop <= 80
+    if (nearTop !== autoScroll) setAutoScroll(nearTop)
+  }
+
   const { data: recents } = useQuery({
     queryKey: ['stream', 'recent'],
     queryFn: () => api('/stream/recent?limit=100'),
@@ -56,7 +63,7 @@ export default function Live() {
   useEffect(() => {
     if (!autoScroll) return
     if (!recents?.running && !recents?.events?.length) return
-    wallRef.current?.scrollTo({ top: wallRef.current.scrollHeight, behavior: 'smooth' })
+    wallRef.current?.scrollTo({ top: 0 })
   }, [recents?.events?.length, autoScroll, recents?.running])
 
   const events = recents?.events || []
@@ -89,7 +96,7 @@ export default function Live() {
         </label>
       </div>
 
-      <div ref={wallRef} tabIndex={0} className={classNames("h-[60vh] overflow-y-auto border rounded-lg bg-slate-950/40 focus:outline-none focus:ring-2 focus:ring-emerald-600/40",
+      <div ref={wallRef} tabIndex={0} onScroll={handleScroll} className={classNames("h-[60vh] overflow-y-auto border rounded-lg bg-slate-950/40 focus:outline-none focus:ring-2 focus:ring-emerald-600/40",
                running ? 'border-emerald-800/70 glow-ring' : 'border-slate-800')}
            aria-label="Live event wall"
            aria-live="polite">
