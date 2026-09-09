@@ -18,6 +18,7 @@ const Privacy = lazy(() => import('./pages/Privacy.jsx'))
 const ExportPage = lazy(() => import('./pages/ExportPage.jsx'))
 const Benchmark = lazy(() => import('./pages/Benchmark.jsx'))
 const Demo = lazy(() => import('./pages/Demo.jsx'))
+const SchemaDocs = lazy(() => import('./pages/SchemaDocs.jsx'))
 
 function PageLoader() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
           <Route path="/export" element={<Suspense fallback={<PageLoader />}><ExportPage /></Suspense>} />
           <Route path="/benchmark" element={<Suspense fallback={<PageLoader />}><Benchmark /></Suspense>} />
+          <Route path="/schema-docs" element={<Suspense fallback={<PageLoader />}><SchemaDocs /></Suspense>} />
         </Route>
       </Route>
     </Routes>

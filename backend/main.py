@@ -22,6 +22,7 @@ from api.routes_geo import router as geo_router
 from api.routes_audit import router as audit_router
 from api.routes_assets import router as assets_router
 from api.routes_ml import router as ml_router
+from api.routes_schema import router as schema_router
 from core.auth import decode_token, seed_admin
 from core.alerts import seed_alert_rules
 from core.config import settings
@@ -75,6 +76,7 @@ app.include_router(geo_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(assets_router, prefix="/api")
 app.include_router(ml_router, prefix="/api")
+app.include_router(schema_router, prefix="/api")
 
 
 @app.on_event("startup")

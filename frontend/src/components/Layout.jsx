@@ -5,6 +5,7 @@ import {
   Bell,
   Clapperboard,
   Download,
+  FileText,
   Gauge,
   Globe,
   Lock,
@@ -35,6 +36,7 @@ const links = [
   { to: '/privacy', label: 'PRIVACY', icon: Lock },
   { to: '/export', label: 'EXPORT', icon: Download },
   { to: '/benchmark', label: 'BENCHMARK', icon: Activity },
+  { to: '/schema-docs', label: 'SCHEMA DOCS', icon: FileText },
 ]
 
 export default function Layout() {

@@ -16,6 +16,7 @@ const PAGES = [
   { path: '/privacy', name: 'Privacy', markers: ['PRIVACY POLICY ENGINE'] },
   { path: '/export', name: 'Export', markers: ['SIEM EXPORT'] },
   { path: '/benchmark', name: 'Benchmark', markers: ['BENCHMARK', 'RUN BENCHMARK'] },
+  { path: '/schema-docs', name: 'SchemaDocs', markers: ['UNIVERSAL EVENT SCHEMA DOCS'] },
 ]
 
 let token = ''
