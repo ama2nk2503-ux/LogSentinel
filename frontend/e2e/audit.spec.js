@@ -117,6 +117,26 @@ for (const p of PAGES) {
   })
 }
 
+test('Export: ECS and OCSF format cards are present and download JSON', async ({ page }) => {
+  await login(page)
+  await page.goto('/export')
+  await selectSeedJob(page)
+  await expect(page.getByRole('button', { name: /ECS/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /OCSF/ })).toBeVisible()
+
+  await page.getByRole('button', { name: /ECS/ }).click()
+  let downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: /DOWNLOAD ECS/ }).click()
+  let download = await downloadPromise
+  expect(download.suggestedFilename()).toContain('.json')
+
+  await page.getByRole('button', { name: /OCSF/ }).click()
+  downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: /DOWNLOAD OCSF/ }).click()
+  download = await downloadPromise
+  expect(download.suggestedFilename()).toContain('.json')
+})
+
 test('Explorer: select seed job, open event detail dialog, Escape closes', async ({ page }) => {
   await login(page)
   await page.goto('/explorer')

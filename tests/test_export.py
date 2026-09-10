@@ -5,6 +5,8 @@ import pytest
 from exporters.exporters import (export_cef, export_csv, export_json,
                                  export_leef, export_stix, export_syslog,
                                  _cef_escape_ext, _leef_escape)
+from exporters.ecs_export import export_ecs
+from exporters.ocsf_export import export_ocsf
 from exporters.validator import (ExportValidationError, validate_cef,
                                  validate_csv, validate_export,
                                  validate_json, validate_leef,
@@ -120,6 +122,106 @@ def test_syslog_pri_present():
     assert "srv1" in first
 
 
+# ---------- ECS exporter ----------
+
+def test_ecs_export_valid_json():
+    payload = export_ecs("t_exp")
+    validate_json(payload)
+    obj = json.loads(payload)
+    assert obj["schema"] == "ecs@1.16"
+    assert len(obj["events"]) == 2
+
+
+def test_ecs_export_field_mapping():
+    payload = export_ecs("t_exp")
+    obj = json.loads(payload)
+    first = obj["events"][0]
+    assert first["event"]["id"] is not None
+    assert first["event"]["action"] == "auth_failure"
+    assert first["event"]["severity"] == 70   # HIGH -> 70
+    assert first["source"]["ip"] == "185.23.45.67"
+    assert first["destination"]["ip"] == "10.0.0.15"
+    assert first["destination"]["port"] == 22
+    assert first["network"]["transport"] == "tcp"
+    assert first["user"]["name"] == "admin"
+    assert first["host"]["name"] == "srv1"
+
+
+def test_ecs_export_privacy_redaction():
+    payload = export_ecs("t_exp")
+    obj = json.loads(payload)
+    msgs = [e["message"] for e in obj["events"]]
+    assert not any("amaan@example.com" in m for m in msgs)
+    assert any("[EMAIL_REDACTED]" in m for m in msgs)
+
+
+def test_ecs_export_iocs():
+    payload = export_ecs("t_exp")
+    obj = json.loads(payload)
+    iocs = obj["events"][0]["threat"]["indicator"]
+    assert len(iocs) >= 1
+    assert iocs[0]["type"] == "ipv4"
+
+
+def test_ecs_export_critical_severity():
+    payload = export_ecs("t_exp")
+    obj = json.loads(payload)
+    crit = [e for e in obj["events"] if e["event"]["severity"] == 90]
+    assert len(crit) == 1
+    assert crit[0]["user"]["name"] == "administrator"
+
+
+# ---------- OCSF exporter ----------
+
+def test_ocsf_export_valid_json():
+    payload = export_ocsf("t_exp")
+    validate_json(payload)
+    obj = json.loads(payload)
+    assert obj["schema"] == "ocsf@1.3"
+    assert len(obj["events"]) == 2
+
+
+def test_ocsf_export_field_mapping():
+    payload = export_ocsf("t_exp")
+    obj = json.loads(payload)
+    first = obj["events"][0]
+    assert first["uid"] is not None
+    assert first["activity_name"] == "auth_failure"
+    assert first["severity"] == "High"
+    assert first["src_endpoint"]["ip"] == "185.23.45.67"
+    assert first["dst_endpoint"]["ip"] == "10.0.0.15"
+    assert first["dst_endpoint"]["port"] == 22
+    assert first["network"]["protocol"] == "tcp"
+    assert first["actor"]["user"]["name"] == "admin"
+    assert first["src_endpoint"]["hostname"] == "srv1"
+    assert first["class_uid"] == 4001
+    assert first["class_name"] == "Network Activity"
+
+
+def test_ocsf_export_privacy_redaction():
+    payload = export_ocsf("t_exp")
+    obj = json.loads(payload)
+    msgs = [e["description"] for e in obj["events"]]
+    assert not any("amaan@example.com" in m for m in msgs)
+    assert any("[EMAIL_REDACTED]" in m for m in msgs)
+
+
+def test_ocsf_export_iocs():
+    payload = export_ocsf("t_exp")
+    obj = json.loads(payload)
+    ind = obj["events"][0]["indicators"]
+    assert len(ind) >= 1
+    assert ind[0]["type"] == "ipv4"
+
+
+def test_ocsf_export_critical_severity():
+    payload = export_ocsf("t_exp")
+    obj = json.loads(payload)
+    crit = [e for e in obj["events"] if e["severity"] == "Critical"]
+    assert len(crit) == 1
+    assert crit[0]["actor"]["user"]["name"] == "administrator"
+
+
 # ---------- validator negative cases ----------
 
 def test_validators_reject_garbage():
@@ -130,6 +232,8 @@ def test_validators_reject_garbage():
         ("stix", "{\"type\": \"notbundle\"}"),
         ("syslog", "no pri here"),
         ("csv", ""),
+        ("ecs", "{nope"),
+        ("ocsf", "{nope"),
     ]:
         with pytest.raises(ExportValidationError):
             validate_export(fmt, bad)

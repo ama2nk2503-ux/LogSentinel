@@ -1,4 +1,4 @@
-"""SIEM-ready exporters: JSON / CSV / CEF / LEEF / STIX 2.1 / Syslog.
+"""SIEM-ready exporters: JSON / CSV / CEF / LEEF / STIX 2.1 / Syslog / ECS / OCSF.
 
 All payloads pass through the privacy policy before serialization.
 """
@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from core.storage import db
 from privacy.policy_engine import load_policy
 from privacy.redactor import apply_policy
+from exporters.ecs_export import export_ecs
+from exporters.ocsf_export import export_ocsf
 
 SEV_CEF = {"CRITICAL": "10", "HIGH": "8", "MEDIUM": "5", "LOW": "3"}
 SEV_SYSLOG = {"CRITICAL": 2, "HIGH": 3, "MEDIUM": 5, "LOW": 7}   # RFC5424 severity
@@ -213,6 +215,8 @@ EXPORTERS = {
     "leef": export_leef,
     "stix": export_stix,
     "syslog": export_syslog,
+    "ecs": export_ecs,
+    "ocsf": export_ocsf,
 }
 
 

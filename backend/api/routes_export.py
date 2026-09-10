@@ -15,6 +15,8 @@ MEDIA = {
     "leef": "text/plain",
     "stix": "application/json",
     "syslog": "text/plain",
+    "ecs": "application/json",
+    "ocsf": "application/json",
 }
 
 
@@ -41,7 +43,8 @@ def export_job(job_id: str, format: str = "json"):
     if job["status"] == "done":
         jobs.update_job(job_id, stage="exported")
 
-    ext = {"cef": "txt", "leef": "txt", "syslog": "log"}.get(fmt, fmt)
+    ext = {"cef": "txt", "leef": "txt", "syslog": "log",
+           "ecs": "json", "ocsf": "json"}.get(fmt, fmt)
     filename = f"logsentinel_{job_id[:8]}.{ext}"
     return PlainTextResponse(
         payload,

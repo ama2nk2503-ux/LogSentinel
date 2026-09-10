@@ -85,6 +85,8 @@ VALIDATORS = {
     "leef": validate_leef,
     "stix": validate_stix,
     "syslog": validate_syslog,
+    "ecs": validate_json,
+    "ocsf": validate_json,
 }
 
 

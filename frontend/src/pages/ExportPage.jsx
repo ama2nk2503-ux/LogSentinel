@@ -11,6 +11,8 @@ const FORMATS = [
     { id: 'csv', label: 'CSV', desc: 'Spreadsheet-ready rows' },
     { id: 'leef', label: 'LEEF', desc: 'IBM QRadar format' },
     { id: 'syslog', label: 'SYSLOG', desc: 'RFC5424-style relay lines' },
+    { id: 'ecs', label: 'ECS', desc: 'Elastic Common Schema JSON' },
+    { id: 'ocsf', label: 'OCSF', desc: 'Open Cybersecurity Schema JSON' },
 ]
 
 export default function ExportPage() {
