@@ -8,6 +8,8 @@ from core.storage import db
 from core.timeline import build_timeline
 from privacy.policy_engine import load_policy
 from privacy.redactor import sanitize_event
+from detection.describe import describe_incident
+from detection.kgraph import (event_map, incident_rows, incident_signal_vector)
 
 router = APIRouter()
 
@@ -58,6 +60,26 @@ def job_threats(job_id: str):
             (job_id,)).fetchall()
     policy = dict(load_policy())
     incidents = [sanitize_event(_row_to_incident(r), policy) for r in inc_rows]
+    # Workstream B: plain-language "what was found" narrative per incident,
+    # generated deterministically from the incident's own computed evidence.
+    try:
+        krows = incident_rows(job_id)
+        eids = sorted({e for i in krows for e in i["event_ids"]})
+        events_by_id = event_map(job_id, eids)
+        sigs = {i["id"]: incident_signal_vector(i, events_by_id) for i in krows}
+    except Exception:
+        sigs = {}
+    for inc in incidents:
+        inc["description"] = describe_incident(inc, sigs.get(inc.get("id")))
+    # M4 item 10: optional AI narration of the ALREADY-computed risk breakdown.
+    # Absent (None) unless explicitly enabled + local LLM available.
+    from ai.summary import narrate_risk
+    for inc in incidents:
+        narration = narrate_risk(str(inc.get("title") or inc.get("entity") or "incident"),
+                                 int(inc.get("risk_score") or 0),
+                                 list(inc.get("reasons") or []))
+        if narration:
+            inc["ai_summary"] = narration
     dets = []
     for r in det_rows:
         d = dict(r)

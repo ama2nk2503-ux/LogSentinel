@@ -12,6 +12,9 @@ from core import jobs
 from core.config import settings
 from core.ingest import iter_line_chunks
 from core.storage import db
+from mining.template_miner import (MIN_CONFIDENCE, load_templates,
+                                   mine_templates, parse_learned_line,
+                                   persist_templates)
 from ioc.extractor import detect_suspicious, extract_iocs
 from normalization.normalizer import normalize
 from parsers.detector import detect_format
@@ -53,6 +56,19 @@ def run_job(job_id: str) -> None:
         fmt = fmt_info["format"]
         handler = get_file_handler(fmt)
         parser = get_line_parser(fmt)
+
+        # --- M4: unsupervised template mining fallback ---------------------
+        # When format detection confidence is below threshold, learn line
+        # templates offline (Drain-style) BEFORE falling back to generic.
+        learned_templates: list[dict] = []
+        use_miner = (handler is None and parser is None) or (
+            handler is None and fmt_info["confidence"] < MIN_CONFIDENCE)
+        if use_miner:
+            sample_lines = next(iter_line_chunks(path, chunk_lines=2000), [])
+            learned_templates = mine_templates(sample_lines)
+            persist_templates(job_id, learned_templates)
+            jobs.merge_stats(job_id, learned_templates=len(learned_templates),
+                             parsed_by="learned_template")
 
         total = normalized = 0
         pii_events = 0
@@ -129,10 +145,15 @@ def run_job(job_id: str) -> None:
                         "INSERT INTO events (event_id, job_id, line_no, ts, event_type, source,"
                         " src_ip, dst_ip, src_port, dst_port, protocol, username, hostname,"
                         " action, status, severity, message, threat_type, risk_score,"
+                        " dedup_event_id, timestamp_source,"
                         " iocs_json, pii_json, mappings_json, attack_json, extras_json)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         event_buf,
                     )
+                    # M4 chain-of-custody: extend the per-job hash chain after
+                    # each batch insert (never breaks ingestion).
+                    from core.hashchain import append_batch
+                    append_batch(conn, job_id)
                 raw_buf.clear()
                 event_buf.clear()
 
@@ -144,7 +165,12 @@ def run_job(job_id: str) -> None:
             for batch in iter_line_chunks(path):
                 for raw in batch:
                     line_no += 1
-                    fields = parser(raw) if parser else None
+                    if use_miner:
+                        fields = parse_learned_line(
+                            raw, learned_templates,
+                            generic_parser=get_line_parser("generic"))
+                    else:
+                        fields = parser(raw) if parser else None
                     handle(line_no, raw, fields)
                 jobs.set_stage(job_id, "normalized", progress=min(99.0, total / 1000))
         flush()

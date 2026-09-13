@@ -55,6 +55,30 @@
     ],
     "MAL_PERSISTENCE_001": [
       {"technique": "T1547", "name": "Boot or Logon Autostart Execution", "tactic": "persistence"}
+    ],
+    "CLOUD_IAM_001": [
+      {"technique": "T1078.004", "name": "Valid Accounts: Cloud Accounts", "tactic": "defense-evasion"},
+      {"technique": "T1586", "name": "Compromise Infrastructure: Domains", "tactic": "resource-development"}
+    ],
+    "EDR_MALWARE_001": [
+      {"technique": "T1059", "name": "Command and Scripting Interpreter", "tactic": "execution"},
+      {"technique": "T1562.001", "name": "Impair Defenses: Disable or Modify Tools", "tactic": "defense-evasion"}
+    ],
+    "DNS_TUNNEL_001": [
+      {"technique": "T1071.004", "name": "Application Layer Protocol: DNS", "tactic": "command-and-control"},
+      {"technique": "T1048.003", "name": "Exfiltration Over Alternative Protocol: DNS", "tactic": "exfiltration"}
+    ],
+    "OT_ALARM_001": [
+      {"technique": "T0831", "name": "Block Command Message (OT)", "tactic": "impact"}
+    ],
+    "VMW_ESXI_LOGIN_BURST_001": [
+      {"technique": "T1110.001", "name": "Brute Force: Password Guessing", "tactic": "credential-access"}
+    ],
+    "VMW_VCENTER_LOGIN_BURST_001": [
+      {"technique": "T1110.003", "name": "Brute Force: Password Spraying", "tactic": "credential-access"}
+    ],
+    "VMW_NSX_FIREWALL_SCAN_001": [
+      {"technique": "T1046", "name": "Network Service Discovery", "tactic": "discovery"}
     ]
   }
 }

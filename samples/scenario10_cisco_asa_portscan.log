@@ -1,0 +1,16 @@
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/21 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/22 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/23 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/25 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/53 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/80 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/443 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/445 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/3389 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/5432 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/6379 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/9200 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/1433 flags syn
+%ASA-6-106023: Deny TCP from 10.99.0.20/443 to 10.0.0.1/5900 flags syn
+%ASA-6-106023: Deny UDP from 10.99.0.20/5555 to 10.0.0.1/161 flags none
+%ASA-6-302013: Built outbound TCP connection 801 for outside:10.99.0.20/443 to inside:10.0.0.201/8080

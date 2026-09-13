@@ -166,8 +166,10 @@ deterministic -- same input, same output, every time.
   What it is:        THE entry point for data. Three ways to get logs in:
                        1) Drag & drop / click-to-browse a file
                        2) Paste raw log text into a textarea
-                       3) LOAD SAMPLE SCENARIOS -- one-click loading of the
-                          four bundled demo logs
+                       3) LOAD SAMPLE SCENARIOS -- one-click loading of all
+                          28 bundled demo scenarios from samples/manifest.yaml
+                          (severity-coded grid: badge, description, event
+                          count, format, IOC count)
                      Plus a dataset picker to open an already-processed job.
   How it works:
      - File mode:    the file is sent via multipart form-data to
@@ -317,15 +319,22 @@ deterministic -- same input, same output, every time.
 -------------------------------------------------------------------------------
 5.11 CINEMATIC DEMO MODE  (/demo)
 -------------------------------------------------------------------------------
-  What it is:        A guided, narrated walkthrough of four real attack
+  What it is:        A guided, narrated walkthrough of all 28 bundled attack
                      scenarios spinning through the ACTUAL pipeline.
-  How it works:      Four bundled scenarios (SSH brute-force, port scan,
-                     web attacks, Windows auth) feed real sample logs into
-                     the real parsing/detection pipeline. Milestones light up
-                     as each stage completes, with a narration ticker that
-                     explains what just happened and why the engine reached
-                     its conclusions. It is not faked -- the detections shown
-                     came from the live rules.
+  How it works:      All 28 scenarios (SSH brute-force, port scans, web
+                     attacks, Windows auth, EDR, cloud, VMware, OT … across
+                     18 log formats) feed real sample logs into the real
+                     parsing/detection pipeline. Metadata comes from
+                     samples/manifest.yaml (severity_hint, iocs, remediation,
+                     rule_ids), so queued scenarios carry severity badges and
+                     IOC counts. Milestones light up as each stage completes,
+                     with a narration ticker that explains what just happened
+                     and why the engine reached its conclusions. It is not
+                     faked -- the detections shown came from the live rules.
+                     Verified kill-chains reproduce live: scenarios 1, 4, 8
+                     and 23 land CRITICAL (risk 91/83/100/100); the EDR
+                     scenarios 16/21 cap at HIGH (61/62) because the EDR rule
+                     tops out at 75 on a single attack category.
 
 -------------------------------------------------------------------------------
 5.12 LIVE STREAMING SIMULATOR (backend /api/stream/*)
@@ -437,19 +446,18 @@ deterministic -- same input, same output, every time.
         Get-NetTCPConnection -LocalPort 8000,5173 -State Listen |
             Where-Object { $_.OwningProcess -ne 0 } |
             ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
-      Then start fresh. (You can also just use the already-running backend.)
-
-  Tests:
-      Backend : .venv\Scripts\python -m pytest             (149 tests)
-      Frontend: cd frontend; npx playwright test            (31 audit tests:
-                axe accessibility on all 14 pages + functional flows:
+      Then start fresh. (You can also just use the already-running backend.)        Tests:
+            Backend : .venv\Scripts\python -m pytest             (317 tests)
+            Frontend: cd frontend; npx playwright test            (41 e2e tests:
+                axe accessibility on all 18 pages + functional flows:
                 login, upload drag-drop/sample, dashboard export,
                 explorer dialog/Escape + pagination (incl. ML ANOMALY
                 column + starred shock events), threats/intel/graph,
                 alert ack + triage status/timeline modal, event-wall
                 start/stop, compliance audit findings/report, asset
                 inventory rows, intel reputation + geo lookups,
-                benchmark run, mobile sidebar)
+                benchmark run, mobile sidebar, Parser Lab, Modes,
+                integrity verification, rule-vs-ML panel, AI assistant)
 
 --------------------------------------------------------------------------------
 9b. MILESTONE 1 — LIVE SOC OPS (alerting, triage, real-time wall, timeline)
@@ -637,12 +645,15 @@ deterministic -- same input, same output, every time.
                                alerting engine (alerts.py), triage
                                workflow (triage.py), investigation
                                timeline (timeline.py), geoip.py, compliance.py,
-                               assets.py
+                               assets.py, hash chain (hashchain.py),
+                               deterministic id backfill (dedup_backfill.py)
       ml/                      IsolationForest anomaly scorer (features.py +
                                model.py) — trained per job inside the pipeline
       parsers/                 detector (confidence scoring) + registry +
                                syslog/apache/firewall/windows/structured/
-                               generic parsers
+                               generic parsers + named vendor parsers
+                               (Cisco ASA, Fortinet, PAN-OS, Check Point,
+                               CloudTrail, Okta, CrowdStrike, DNS, OT sensor)
       detection/               engine (YAML rules), correlator, classifier,
                                risk scoring, MITRE attack mapping, intent
                                parser (Ask-the-Data)
@@ -650,8 +661,12 @@ deterministic -- same input, same output, every time.
       privacy/                 pii_detector, policy_engine, redactor
       normalization/           UniversalEvent schema + normalizer
       intelligence/            IOC aggregator + report generator
-      exporters/               JSON/CSV/CEF/LEEF/STIX2.1/Syslog + PDF report
+      exporters/               JSON/CSV/CEF/LEEF/STIX2.1/Syslog/ECS/OCSF
+                               + PDF report
       streaming/               live log simulator
+      mining/                  Drain-style unsupervised template miner
+      ai/                      optional AI narration (off by default;
+                               narrates only already-computed findings)
 
   frontend/src/
       components/              Layout (sidebar+nav), JobPicker, ProtectedRoute,
@@ -661,15 +676,136 @@ deterministic -- same input, same output, every time.
                                useDebouncedValue
       pages/                   Login, Upload, Dashboard, Explorer, Threats,
                                Alerts, Live, Graph, Intel, Compliance,
-                               Assets, Privacy, ExportPage, Benchmark, Demo
+                               Assets, Privacy, ExportPage, Benchmark, Demo,
+                               SchemaDocs, ParserLab, Modes
 
   rules/                       YAML threat rules + alert rules + MITRE
                                mapping + intel reference feed + compliance
                                framework YAML + default privacy policy YAML
-  samples/                     scenario1-4 demo logs + labeled/ ground truth
-                               (benchmark fixtures)
+  samples/                     scenario1-28 demo logs + manifest.yaml
+                               (severity_hint / iocs / remediation) + labeled/
+                               ground truth (benchmark fixtures)
   specs/                       design.md + wow_features.spec.md (EARS)
-  tests/                       149 unit/integration tests
+  tests/                       317 unit/integration tests
+
+================================================================================
+9e. MILESTONE 4 — SCHEMA DOCS, VENDOR PARSERS, MINING, CUSTODY CHAIN
+================================================================================
+
+Ten additive increments ("M4"), each shipped with its own tests, closing the
+visible feature gaps of a retrieval/LLM-based competitor submission WITHOUT
+giving up LogSentinel's structural advantage: every finding still traces to
+a rule, a threshold, or a documented schema field — never to an LLM's
+unverified read of retrieved text.
+
+  1. UNIVERSAL EVENT SCHEMA DOCS PAGE (/schema-docs)
+     Per-field table over the UniversalEvent: type, mapped ECS field, mapped
+     OCSF field (Authentication 3002 / Network Activity 4001 / Application
+     Lifecycle 1008 class names), one-line description, and live coverage %
+     for the selected job (non-null share over that job's events). Pure
+     read/derived from existing normalized data — no schema change.
+     Backend: api/routes_schema.py. Page: frontend SchemaDocs.jsx.
+
+  2. ECS JSON + OCSF JSON EXPORT FORMATS (/export)
+     Two new exporters in exporters/ (ecs_export.py, ocsf_export.py) built
+     with the same streaming + privacy-gate + structural-validation pattern
+     as the existing JSON/CSV/CEF/LEEF/STIX2.1/Syslog exporters, which were
+     left untouched. Selected as new cards on the Export page.
+
+  3. DETERMINISTIC IDEMPOTENT EVENT ID (additive migration)
+     normalization/identity.py: SHA-256 of (timestamp|hostname|process|
+     raw_text), truncated to 32 hex chars; constant NOTS marker hashed in
+     when no timestamp is parseable so ids stay stable and collision-safe.
+     Stored in new events.dedup_event_id + events.timestamp_source
+     ("event" vs "ingest") columns via the standard column migrations,
+     with an idempotent backfill (core/dedup_backfill.py) for rows ingested
+     before the column existed. Existing event ids are untouched.
+
+  4. PARSER LAB PAGE (/parser-lab)
+     Paste/type text, parsed live (400ms debounce) by the EXACT ingestion
+     code path: detector.py confidence scoring first, then the detected
+     parser, then a deterministic sweep of the remaining registry, then the
+     generic fallback labeled "unknown — generic fallback". Per-line
+     raw-vs-normalized chips, tiles for records / named-parser % / fallback
+     % / distinct formats / throughput. Read-only: writes nothing to the
+     DB; upload/paste flow untouched. Backend: api/routes_parserlab.py.
+
+  5. NINE NAMED VENDOR PARSERS (additive to the registry)
+     parsers/vendor_parsers.py + vendor_registry.py register: Cisco ASA
+     (%ASA/FTD/FPR-), Fortinet FortiGate key=value, Palo Alto PAN-OS CSV,
+     Check Point product=, AWS CloudTrail JSON, Okta system-log JSON,
+     CrowdStrike Falcon JSON, DNS query logs, and an OT/industrial
+     key=value sensor log. Each has its own detector signature, normalizer
+     mapping, IOC/rule tie-in (rules/vendors.yaml + attack_mapping.json),
+     and tests — registered ALONGSIDE syslog/apache/windows/firewall
+     without modifying them.
+
+  6. UNSUPERVISED TEMPLATE MINING FALLBACK (mining/template_miner.py)
+     When format-detection confidence drops below the threshold (0.30), a
+     local Drain-style miner (no network, no model download) groups lines
+     by masked token shape before the generic fallback fires. Learned
+     templates persist per job (learned_templates table) for audit, and
+     provenance is tagged parsed_by="learned_template" next to the existing
+     named_parser/generic_fallback values.
+
+  7. RULE-VS-ML COMPARISON VIEW (Threats page panel)
+     Pure UI over data both halves already produce: RULES ONLY (incidents
+     with no ML-flagged evidence), ML ONLY (IsolationForest-flagged events
+     not covered by an incident), BOTH AGREED (incidents backed by
+     anomalous evidence or an explicit ML risk bump). No new backend logic.
+
+  8. CHAIN-OF-CUSTODY HASH CHAIN (core/hashchain.py)
+     New hash_chain table (per job, one link per ingested batch): each
+     batch hash covers every event row in the batch and chains to the
+     previous link's hash. Appended inside the same transaction as the
+     existing batch inserts in pipeline.py + streaming/simulator.py,
+     wrapped so a hashing failure can never break ingestion. "VERIFY
+     INTEGRITY" on the Export page (GET /api/integrity/{job_id}) recomputes
+     every link and reports batch-hash mismatches (evidence altered) and
+     prev-hash breaks (chain tampering).
+
+  9. MODES PAGE (/modes)
+     Demo (bundled samples) / Production (offline, air-gapped) / Custom
+     upload presented as explicit cards, plus THE OFFLINE GUARANTEE panel
+     that makes the zero-network-calls property an inspectable claim in the
+     UI instead of only a README note. Documentation/UX surface only — no
+     new backend infrastructure.
+
+  10. OPTIONAL "AI SUMMARY" NARRATION (ai/summary.py — OFF by default)
+     An LLM may only NARRATE a conclusion the deterministic engine already
+     reached, labeled "AI-generated summary — verify against evidence
+     below" with the exact unedited reason breakdown shown directly
+     underneath. Disabled unless LOGSENTINEL_AI_SUMMARY=1 AND a local
+     OpenAI/Ollama-compatible endpoint answers at LOGSENTINEL_LLM_URL
+     (stdlib urllib, 2s timeout, no new dependency, no API key). Off — or
+     with the LLM absent — the module dials nothing, returns nothing, and
+     the app runs and passes all tests identically; a deterministic
+     template narrates from the same evidence when enabled but unavailable.
+
+Tests added in this milestone: test_schema_docs, test_export (ECS/OCSF),
+test_dedup_id, test_vendor_parsers, test_template_miner, test_parser_lab,
+test_hashchain, test_ai_summary => 215 backend tests total. New e2e: schema
+docs, ECS/OCSF download, parser lab, modes, integrity verification, rule-vs-
+ML panel (39 total, axe-scanned on every page). Current totals (post sample-
+corpus enrichment): 317 backend tests, incl. test_demo_samples.py (28-scenario
+integrity + severity_hint/IOC/remediation/record-count assertions); 41 e2e =
+18 page-render + 23 functional flows, axe-scanned on every page.
+
+--------------------------------------------------------------------------------
+PITCH NOTE — DETERMINISTIC, EVIDENCE-TRACEABLE FINDINGS
+--------------------------------------------------------------------------------
+
+Competing approaches answer security questions by retrieving text and asking
+an LLM to read it. That makes every answer a wager on a language model's
+interpretation — unverifiable, irreproducible, and un-auditable after the
+fact. LogSentinel inverts the design: detections fire from versioned YAML
+rules with explicit thresholds, risk scores carry their factor breakdown,
+schema mappings and coverage are published on a docs page, a SHA-256 custody
+chain proves stored evidence is unaltered, and an LLM — when explicitly
+enabled — may only narrate a conclusion the deterministic engine already
+reached, with the evidence displayed unedited directly beneath a standing
+disclaimer. For an air-gapped SOC, that is the difference between a claim
+you must trust and a finding you can re-verify line by line.
 
 ================================================================================
 END OF WALKTHROUGH

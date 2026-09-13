@@ -1,0 +1,10 @@
+Aug 12 14:30:01 ns1 named[1234]: client 10.99.0.70#52000: query: zxq4mK2dP9wY6T3rB8vN1cL5hS7gJ2fD0aC4eX8nR6tY3uI0oP2qA1.example.com IN A
+Aug 12 14:30:02 ns1 named[1234]: client 10.99.0.70#52001: query: qAz1wSx2eDc3rFv4tGb5yHn6uJm7iKlo8pL9Qw4eR8tY2uI0oP2qA1zC.example.com IN A
+Aug 12 14:30:03 ns1 named[1234]: client 10.99.0.70#52002: query: bY7tR5fVb3cXz9wQe1sDf2gHj4kLq0PoUi8yT6rEw3qAs2dFg5hJk7.example.net IN A
+Aug 12 14:30:04 ns1 named[1234]: client 10.99.0.70#52003: query: mN2kL4jH6gF8dS0qA1cC3bV5xZ7wE9rT5yU0iO4pL8kA2zS6xD9fG1.example.org IN A
+Aug 12 14:30:05 ns1 named[1234]: client 10.99.0.70#52004: query: nB7vC2xZ9qW4eR8tY3uI0oP2qA1sD5fG6hJ7kL0zX9cV3bN5mQw8eR.example.com IN A
+Aug 12 14:30:06 ns1 named[1234]: client 10.99.0.70#52005: query: pQ0wE7rT5yU4iO2pL9kA3sD6fG1hJ8zX5cV2bN7mQw9eR4tY.example.com IN A
+Aug 12 14:30:07 ns1 named[1234]: client 10.99.0.70#52006: query: cX9vB3nM7qW2eR5tY8uI1oP9aA4sD6fG7hJ0kL2zX5cV8bN3mQw4eR7tY2uI9.example.net IN A
+Aug 12 14:30:08 ns1 named[1234]: client 10.99.0.70#52007: query: tG5hJ8kL0zX3cV6bN9mQw2eR5tY8uI1oP4aA7sD0fG3hJ6kL9zX2cV5bN8mQw1eR4tY7uI0oP3aA6.prot_exfil.example IN A
+Aug 12 14:30:09 ns1 named[1234]: client 10.99.0.70#52008: query: vF4bN7mQw0eR3tY6uI9oP2aA5sD8fG1hJ4kL7zX0cV3bN6mQw9eR2tY5uI8oP1aA4sD7fG0hJ.data_exfil.example IN A
+Aug 12 14:30:10 ns1 named[1234]: client 10.99.0.70#52009: query: wE6rT9yU2iO5pL8kA1sD4fG7hJ0kL3zX6cV9bN2mQw5eR8tY1uI4oP7aA0sD3fG6hJ9kL2zX.staging.example IN TXT

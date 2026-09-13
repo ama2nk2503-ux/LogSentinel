@@ -7,6 +7,9 @@ from collections import Counter
 SAMPLE_SIZE = 300
 
 SIGNATURES = {
+    # checked before syslog: DNS query logs are syslog-shaped but carry the
+    # distinctive "query: <domain>" marker (M4)
+    "dns": re.compile(r"\bquery:\s*[A-Za-z0-9]"),
     "syslog": re.compile(
         r"^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+[\w\-.]+(\[\d+\])?:"
     ),
@@ -19,6 +22,22 @@ SIGNATURES = {
     "windows_text": re.compile(r"^(Log Name|Source|Event ID):\s", re.M),
     "suricata": re.compile(r"\[\*\*\]\s+\[\d+:\d+:\d+\]"),
     "squid": re.compile(r"^\d{9,12}\.\d{3}\s+\d+\s+[\d.]+\s+(TCP_|UDP_|NONE_)"),
+    # --- M5 VMware signatures (additive; before ISO_TS firewall fallback) ---
+    "esxi": re.compile(
+        r"\b(?:hostd|vpxa|vmkernel[\w-]*|vobd)\[\d+\]|UserAccountLockedEvent|"
+        r"Failed login for user|Login authentication failed for user"
+    ),
+    "nsx": re.compile(
+        r"\bnsxmanager(?:-\S+)?\s+\d+\s+audit:|\[Firewall\]|\[ManagementPlane\]"
+    ),
+    "vcenter": re.compile(r"\bvpxd?\[\d+\]|\[VpxLRO\]|\bvsphere-ui\b"),
+    # --- M4 named vendor signatures (additive) ---
+    "cisco_asa": re.compile(r"^%(ASA|FTD|FPR)-\d-\d{6}:", re.M),
+    "fortinet": re.compile(r"\bdate=\d{4}-\d{2}-\d{2}\b.*\bdevname="),
+    "palo_alto": re.compile(r"(?:TRAFFIC|THREAT|AUTHENTICATION|GLOBALPROTECT),"),
+    "check_point": re.compile(r"product=\S+;"),
+    "dns": re.compile(r"\bquery:\s*[A-Za-z0-9]"),
+    "ot_sensor": re.compile(r"\b(?:plc|device|controller)=\S+\b.*\btag=\S+"),
 }
 
 KV_PAIR = re.compile(r"\b([A-Za-z_][\w.\-]*)=(\"[^\"]*\"|[^\s]+)")
@@ -30,7 +49,7 @@ ISO_TS = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
 SUBTYPES = [
     ("sshd", "Linux SSH / Syslog"),
     ("sudo", "Linux Privilege Escalation / Syslog"),
-    ("su[", "Linux Auth / Syslog"),
+    ("su\\[", "Linux Auth / Syslog"),
     ("CRON", "Cron / Syslog"),
     ("named", "DNS (Syslog)"),
     ("dnsmasq", "DNS/DHCP (Syslog)"),
@@ -114,6 +133,11 @@ def detect_format(lines: list[str]) -> dict:
     json_hits = sum(1 for ln in sample if _is_json(ln))
     if json_hits / total >= 0.6:
         scores["json"] = max(scores["json"], json_hits)
+        # --- M4: distinguish JSON vendor flavors by record keys ---
+        vendor = _json_vendor(sample)
+        if vendor:
+            scores["json"] = 0  # json wins dispatch via vendor below
+            scores[vendor] = json_hits
 
     # CSV structural check
     csv_share, csv_cols = _csv_score(sample)
@@ -130,7 +154,10 @@ def detect_format(lines: list[str]) -> dict:
     result["format"] = fmt
     result["confidence"] = round(min(0.99, share), 3)
 
-    if fmt == "syslog":
+    if fmt in ("cisco_asa", "fortinet", "palo_alto", "check_point"):
+        result["subtype"] = {"cisco_asa": "Cisco ASA/FTD", "fortinet": "Fortinet FortiGate",
+                             "palo_alto": "Palo Alto PAN-OS", "check_point": "Check Point"}[fmt]
+    elif fmt == "syslog":
         joined = "\n".join(sample)
         for pattern, label in SUBTYPES:
             if re.search(pattern, joined):
@@ -144,6 +171,28 @@ def detect_format(lines: list[str]) -> dict:
         result["format"] = "generic"
         result["subtype"] = None
     return result
+
+
+def _json_vendor(sample) -> str | None:
+    """Return a named vendor format when JSON records carry its keys."""
+    markers = (
+        ("cloudtrail", ("eventSource", "eventName", "userIdentity")),
+        ("okta", ("eventType", "uuid", "outcome")),
+        ("crowdstrike", ("event_type", "detection_id", "cid")),
+    )
+    for ln in sample:
+        if not _is_json(ln):
+            continue
+        try:
+            rec = json.loads(ln.strip())
+        except (ValueError, RecursionError):
+            continue
+        if not isinstance(rec, dict):
+            continue
+        for name, keys in markers:
+            if sum(k in rec for k in keys) >= 2:
+                return name
+    return None
 
 
 def _noise_ratio(sample) -> float:

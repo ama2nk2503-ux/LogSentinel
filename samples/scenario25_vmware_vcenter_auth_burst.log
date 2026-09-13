@@ -1,0 +1,9 @@
+2026-09-12T14:30:01.123Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:30:11.456Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:30:21.789Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:30:31.012Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:30:41.345Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:30:51.678Z audit vpxd[06870] user 'administrator@vsphere.local' Failed to authenticate from 185.23.45.67
+2026-09-12T14:31:01.901Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:31:11.234Z audit vpxd[06870] user 'root' Failed to authenticate from 185.23.45.67
+2026-09-12T14:31:21.567Z audit vpxd[06870] user 'root' Lockout state triggered

@@ -3,9 +3,11 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Activity,
   Bell,
+  Boxes,
   Clapperboard,
   Download,
   FileText,
+  FlaskConical,
   Gauge,
   Globe,
   Lock,
@@ -16,6 +18,7 @@ import {
   Server,
   Shield,
   ShieldAlert,
+  MessagesSquare,
   Upload,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext.jsx'
@@ -37,6 +40,9 @@ const links = [
   { to: '/export', label: 'EXPORT', icon: Download },
   { to: '/benchmark', label: 'BENCHMARK', icon: Activity },
   { to: '/schema-docs', label: 'SCHEMA DOCS', icon: FileText },
+  { to: '/parser-lab', label: 'PARSER LAB', icon: FlaskConical },
+  { to: '/assistant', label: 'AI ASSISTANT', icon: MessagesSquare },
+  { to: '/modes', label: 'MODES', icon: Boxes },
 ]
 
 export default function Layout() {

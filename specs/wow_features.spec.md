@@ -11,7 +11,7 @@ privacy policy choke point.
 |---|---------|---------|
 | A | ATT&CK Kill-Chain View | Detections mapped to MITRE ATT&CK techniques; animated tactic progression per attacker |
 | B | Live Attack Graph | Cytoscape.js entity graph, severity-colored edges, node drill-down |
-| C | Cinematic Demo Mode | Auto-plays 4 scenarios through real pipeline milestones with narration overlay |
+| C | Cinematic Demo Mode | Auto-plays 28 bundled scenarios through real pipeline milestones with narration overlay |
 | D | Ask-the-Data Search Bar | Deterministic intent parser -> chips + filtered results (no LLM) |
 | E | PDF Threat Report | Branded multi-page reportlab report with charts and evidence |
 
@@ -33,7 +33,7 @@ privacy policy choke point.
 
 ### C. Cinematic Demo Mode
 - Backend shall expose per-job stage milestones (`uploaded..exported`) in job status.
-- When Demo Mode starts, frontend shall sequentially process 4 bundled scenarios, advancing narration only on real milestone events showing actual numbers.
+- When Demo Mode starts, frontend shall sequentially process all 28 bundled scenarios, advancing narration only on real milestone events showing actual numbers.
 - When scenarios finish, summary board totals shall exactly equal Dashboard cards.
 
 ### D. Ask-the-Data Search Bar
@@ -54,7 +54,7 @@ privacy policy choke point.
 ## Acceptance Criteria
 1. Given brute-force sample processed, When Kill-Chain view opens, Then `185.23.45.67` shows Credential Access achieved (T1110 badge) advancing to Execution after correlated suspicious command; clicking Credential Access lists 3 failed + 1 successful SSH events with timestamps.
 2. Given same dataset, When Attack Graph opens, Then attacker->admin edge severity-red labeled `BRUTE_FORCE_001`; attacker node click shows evidence panel.
-3. Given fresh state, When Cinematic Demo runs, Then all 4 scenarios complete with live milestone narration and final summary == dashboard cards.
+3. Given fresh state, When Cinematic Demo runs, Then all 28 scenarios (severities LOW–CRITICAL) complete with live milestone narration and final summary == dashboard cards.
 4. Given HIGH auth attacks within last hour, When `"show me all high-risk authentication attacks from the last hour"` submitted, Then chips `[severity=HIGH][type≈auth][window=last 1h]` render and results exactly equal equivalent Explorer filter.
 5. Given any correlation, When Download Report clicked, Then valid multi-page PDF arrives <5s with counts matching dashboard.
 

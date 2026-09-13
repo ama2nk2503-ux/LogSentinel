@@ -16,15 +16,17 @@ def insert_event(job_id, **kw):
         kw.get("src_port"), kw.get("dst_port"), kw.get("protocol"),
         kw.get("username"), kw.get("hostname"), kw.get("action"),
         kw.get("status"), kw.get("severity", "LOW"), kw.get("message", ""),
-        "", 0, "[]", "[]", "{}", "[]", "{}",
+        "", 0, kw.get("dedup_event_id", ""), kw.get("timestamp_source", "ingest"),
+        "[]", "[]", "{}", "[]", "{}",
     )
     with db() as conn:
         conn.execute(
             "INSERT INTO events (event_id, job_id, line_no, ts, event_type, source,"
             " src_ip, dst_ip, src_port, dst_port, protocol, username, hostname,"
             " action, status, severity, message, threat_type, risk_score,"
+            " dedup_event_id, timestamp_source,"
             " iocs_json, pii_json, mappings_json, attack_json, extras_json)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             row,
         )
 

@@ -24,12 +24,26 @@ const STATUSES = ['NEW', 'ACKNOWLEDGED', 'IN_PROGRESS', 'ESCALATED', 'RESOLVED',
 
 export default function Threats() {
   const [jobId, setJobId] = useState('')
+  const [tab, setTab] = useState('incidents')
   const queryClient = useQueryClient()
 
   const { data } = useQuery({
     queryKey: ['threats', jobId],
     queryFn: () => api(`/threats/${jobId}`),
     enabled: !!jobId,
+  })
+
+  // Workstream A/E: OPSEC actor attribution + job knowledge graph (on demand)
+  const opsec = useQuery({
+    queryKey: ['opsec', jobId],
+    queryFn: () => api(`/opsec/${jobId}`),
+    enabled: !!jobId && tab === 'opsec',
+  })
+
+  const knowledge = useQuery({
+    queryKey: ['knowledge', jobId],
+    queryFn: () => api(`/knowledge/${jobId}`),
+    enabled: !!jobId && tab === 'opsec',
   })
 
   const setStatus = useMutation({
@@ -50,19 +64,50 @@ export default function Threats() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['threats', jobId] }),
   })
 
+  // M4 item 7: rule-vs-ML agreement panel (pure UI — data both halves already produce)
+  const ml = useQuery({
+    queryKey: ['ml', jobId],
+    queryFn: () => api(`/ml/${jobId}`),
+    enabled: !!jobId,
+  })
+
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <PageHeader title="THREAT CORRELATION" />
-      <div className="mb-5"><JobPicker value={jobId} onChange={setJobId} /></div>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <JobPicker value={jobId} onChange={setJobId} />
+        <div className="flex gap-1 border border-slate-800 rounded-lg overflow-hidden" role="tablist" aria-label="Correlation views">
+          <button role="tab" aria-selected={tab === 'incidents'} onClick={() => setTab('incidents')}
+                  className={classNames('px-3 py-1.5 text-[11px] tracking-widest transition-colors',
+                    tab === 'incidents' ? 'bg-emerald-900/40 text-emerald-300' : 'text-slate-500 hover:text-slate-300')}>
+            INCIDENTS
+          </button>
+          <button role="tab" aria-selected={tab === 'opsec'} onClick={() => setTab('opsec')}
+                  className={classNames('px-3 py-1.5 text-[11px] tracking-widest transition-colors',
+                    tab === 'opsec' ? 'bg-emerald-900/40 text-emerald-300' : 'text-slate-500 hover:text-slate-300')}>
+            OPSEC ATTRIBUTION
+          </button>
+        </div>
+      </div>
 
       {!jobId && <div className="text-sm text-slate-500">Select a processed dataset.</div>}
 
+      {tab === 'opsec' && jobId && (
+        <OpsecView jobId={jobId} opsec={opsec.data} knowledge={knowledge.data} loading={opsec.isLoading} />
+      )}
+
+      {tab === 'incidents' && (
+      <>
       {jobId && !data && <Skeleton rows={5} className="mt-4" />}
 
       {data && data.incidents.length === 0 && (
         <div className="text-sm text-emerald-500 border border-emerald-900 rounded p-4 bg-emerald-950/20">
           ✓ No threat incidents correlated for this dataset.
         </div>
+      )}
+
+      {data && data.incidents.length > 0 && ml.data && (
+        <RuleVsMlPanel incidents={data.incidents} ml={ml.data} />
       )}
 
       <div className="space-y-4">
@@ -90,6 +135,19 @@ export default function Threats() {
             <div className="grid md:grid-cols-2 gap-0 border-t border-inherit">
               <div className="p-4 border-r border-slate-800/50">
                 <div className="text-[10px] tracking-widest text-slate-500 mb-2">WHY WAS THIS DETECTED?</div>
+                {inc.ai_summary && (
+                  <div className="mb-3 border-l-2 border-purple-700 pl-2" data-testid="ai-summary">
+                    <div className="text-[11px] text-purple-300">{inc.ai_summary.narration}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">⚠ {inc.ai_summary.disclaimer}</div>
+                  </div>
+                )}
+                {inc.description && (
+                  <div className="mb-3 border-l-2 border-emerald-700 pl-2" data-testid="what-was-found">
+                    <div className="text-[10px] uppercase tracking-widest text-emerald-400 mb-1">What was found</div>
+                    <div className="text-[11px] text-slate-200 leading-relaxed">{stripTags(inc.description.summary)}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">{inc.description.provenance}</div>
+                  </div>
+                )}
                 <ul className="space-y-1">
                   {inc.reasons.map((r) => (
                     <li key={r} className="text-xs flex gap-2"><span className="text-emerald-500">✓</span><span className="text-slate-300">{r}</span></li>
@@ -141,6 +199,8 @@ export default function Threats() {
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </div>
   )
@@ -400,5 +460,346 @@ function KillChain({ killchain }) {
         </div>
       )}
     </div>
+  )
+}
+
+// M4 item 7: rule-vs-ML agreement counts — pure UI over data both halves
+// already produce (incidents from the correlator, anomalies from the ML model).
+function RuleVsMlPanel({ incidents, ml }) {
+  const anomalousIds = new Set((ml.anomalies || []).map((a) => a.event_id))
+  const withAnomalousEvidence = incidents.filter(
+    (inc) => (inc.evidence_event_ids || []).some((id) => anomalousIds.has(id)),
+  )
+  const withMlReason = incidents.filter(
+    (inc) => (inc.reasons || []).some((r) => /ML anomaly signal/i.test(r)),
+  )
+  const agreed = new Set([...withAnomalousEvidence, ...withMlReason])
+  const rulesOnly = incidents.length - agreed.size
+  const tiles = [
+    { label: 'RULES ONLY', value: Math.max(0, rulesOnly), tone: 'text-sky-300' },
+    { label: 'ML ONLY', value: ml.summary?.n_anomalies || 0, tone: 'text-purple-300' },
+    { label: 'BOTH AGREED', value: agreed.size, tone: 'text-emerald-300' },
+  ]
+  return (
+    <section className="mb-5 border border-slate-800 bg-slate-900/60 rounded-lg p-4" aria-label="Rule versus ML agreement">
+      <div className="text-[10px] tracking-widest text-slate-500 mb-3">RULES vs ML — WHO SAW WHAT</div>
+      <div className="grid grid-cols-3 gap-3 max-w-md">
+        {tiles.map((t) => (
+          <div key={t.label} className="text-center">
+            <div className={`text-2xl font-bold font-mono ${t.tone}`}>{t.value}</div>
+            <div className="text-[10px] tracking-widest text-slate-500 mt-1">{t.label}</div>
+          </div>
+        ))
+        }
+      </div>
+      <p className="mt-3 text-[11px] text-slate-500">
+        Rules-only = incidents whose evidence contains no ML-flagged events. ML only = events the
+        IsolationForest flagged that no incident covers. Both agreed = incidents backed by at least
+        one anomalous evidence event or an explicit ML risk bump.
+      </p>
+    </section>
+  )
+}
+
+// Workstream A/E: deterministic "what was found" / OPSEC attribution views.
+function stripTags(html) {
+  return (html || '').replace(/<[^>]+>/g, '')
+}
+
+const SEV_TONE = {
+  CRITICAL: 'text-red-300 border-red-800',
+  HIGH: 'text-orange-300 border-orange-800',
+  MEDIUM: 'text-amber-300 border-amber-800',
+  LOW: 'text-sky-300 border-sky-800',
+}
+
+function PostureRing({ score }) {
+  const color = score >= 70 ? '#ef4444' : score >= 40 ? '#f97316' : '#eab308'
+  return (
+    <div className="w-14 h-14 rounded-full grid place-items-center shrink-0"
+         style={{ background: `conic-gradient(${color} ${Math.min(100, score || 0) * 3.6}deg, #374151 0deg)` }}>
+      <div className="w-11 h-11 rounded-full bg-bg-base grid place-items-center">
+        <span className="text-sm font-bold" style={{ color }}>{score || 0}</span>
+      </div>
+    </div>
+  )
+}
+
+function OpsecView({ jobId, opsec, knowledge, loading }) {
+  if (loading && !opsec) {
+    return <div className="mt-4"><Skeleton rows={6} /></div>
+  }
+  if (!opsec || opsec.n_actors === 0) {
+    return (
+      <div className="text-sm text-slate-500 border border-slate-800 rounded p-4 bg-slate-900/40">
+        No actor clusters for this dataset — OPSEC attribution requires at least two incidents
+        linked by shared evidence signals.
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-4">
+      <section className="border border-slate-800 bg-slate-900/60 rounded-lg p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] tracking-widest text-slate-500">ACTOR ATTRIBUTION — KNOWLEDGE GRAPH COMMUNITIES</div>
+            <div className="text-lg font-bold mt-1 text-slate-100">
+              {opsec.n_actors} actor cluster{opsec.n_actors === 1 ? '' : 's'} · {opsec.n_incidents} incidents
+              <span className="ml-2 text-[11px] font-normal text-slate-500">
+                link threshold {opsec.link_threshold} · mean posture {opsec.posture_summary.mean}
+              </span>
+            </div>
+          </div>
+          <button onClick={() => downloadKnowledgeGraph(jobId, knowledge)}
+                  className="btn btn-ghost px-3 py-1.5 text-[11px]" title="Download GraphRAG-ready JSON">
+            ⬇ EXPORT KNOWLEDGE GRAPH (GRAPHRAG JSON)
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-500">
+          Actors are the union-find communities detected on the knowledge graph — incidents linked by
+          reused IOCs, shared MITRE techniques, matching geo ranges or beacon cadence.
+          <a className="text-emerald-400 hover:underline" href={`#graph-${jobId}`}> Scroll to the mini-graph below.</a>
+        </p>
+      </section>
+
+      <ActorKnowledgeGraph jobId={jobId} data={knowledge} />
+
+      {opsec.actors.map((actor) => (
+        <ActorCard key={actor.actor_id} actor={actor} />
+      ))}
+    </div>
+  )
+}
+
+function ActorCard({ actor }) {
+  const [open, setOpen] = useState(false)
+  const iocs = actor.shared_signals?.reused_iocs || []
+  const techs = actor.shared_signals?.mitre_techniques || []
+  return (
+    <div className="border border-emerald-900/60 rounded-lg overflow-hidden bg-slate-900/40">
+      <div className="px-5 py-3 flex items-center justify-between bg-black/20">
+        <div>
+          <div className="text-[10px] tracking-widest text-emerald-400">{actor.actor_id}</div>
+          <div className="font-bold tracking-wide mt-0.5">
+            {actor.n_incidents} incident{actor.n_incidents === 1 ? '' : 's'} · {Math.round((actor.confidence || 0) * 100)}% link confidence
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] tracking-widest text-slate-500">POSTURE</span>
+          <PostureRing score={actor.posture} />
+        </div>
+      </div>
+
+      {actor.description && (
+        <div className="px-5 py-3 border-t border-emerald-900/40">
+          <div className="text-[10px] uppercase tracking-widest text-emerald-400 mb-1">What was found</div>
+          <div className="text-[11px] text-slate-200 leading-relaxed">{stripTags(actor.description.summary)}</div>
+        </div>
+      )}
+
+      <div className="px-5 py-3 border-t border-emerald-900/40">
+        <div className="text-[10px] tracking-widest text-slate-500 mb-2">LINKED INCIDENTS</div>
+        <div className="flex flex-wrap gap-2">
+          {actor.members.map((m) => (
+            <span key={m.id} className={classNames('px-2 py-1 rounded border text-[11px]',
+              SEV_TONE[m.severity] || SEV_TONE.LOW)} title={`${m.title} · risk ${m.risk_score} · ${m.classification}`}>
+              {m.entity}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-5 py-3 border-t border-emerald-900/40 grid md:grid-cols-2 gap-4">
+        <div>
+          <div className="text-[10px] tracking-widest text-slate-500 mb-1">SHARED SIGNALS</div>
+          {iocs.length === 0 && techs.length === 0 && (
+            <div className="text-[11px] text-slate-600">No extracted shared indicators on the links.</div>
+          )}
+          {iocs.length > 0 && (
+            <ul className="space-y-1 mb-2">
+              {iocs.map((i) => (
+                <li key={i.value} className="text-[11px] text-slate-300">
+                  <span className="text-amber-300">🛰 {i.value}</span>
+                  <span className="text-slate-600"> — reused by {i.incidents} incident(s)</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {techs.length > 0 && (
+            <ul className="space-y-1">
+              {techs.map((t) => (
+                <li key={t.id} className="text-[11px] text-purple-300">{t.id} {t.name}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <button onClick={() => setOpen(!open)} aria-expanded={open}
+                  className="text-[10px] tracking-widest text-slate-500 hover:text-emerald-300">
+            POSTURE BREAKDOWN {open ? '▾' : '▸'}
+          </button>
+          {open && (
+            <ul className="mt-2 space-y-1.5">
+              {(actor.posture_breakdown || []).map((b, i) => (
+                <li key={i} className="flex gap-2 text-[11px]">
+                  <span className="text-emerald-400 font-mono shrink-0 w-5 text-right">+{b.points}</span>
+                  <span className="text-slate-300">{b.reason}</span>
+                  <span className={classNames('shrink-0 text-[9px] border rounded px-1 my-auto',
+                    b.provenance === 'EXTRACTED' ? 'text-emerald-400 border-emerald-800' : 'text-slate-500 border-slate-700')}>
+                    {b.provenance}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function downloadKnowledgeGraph(jobId, data) {
+  if (!data) return
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `knowledge-${jobId}.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+const NODE_STYLE = {
+  incident: { color: '#ef4444', shape: 'hexagon' },
+  technique: { color: '#a855f7', shape: 'round-rectangle' },
+  ioc: { color: '#f59e0b', shape: 'diamond' },
+  entity: { color: '#3b82f6', shape: 'ellipse' },
+}
+const COMMUNITY_PALETTE = ['#10b981', '#f97316', '#818cf8', '#14b8a6', '#e879f9', '#22d3ee']
+
+function ActorKnowledgeGraph({ jobId, data }) {
+  const containerRef = useRef(null)
+  const cyRef = useRef(null)
+  const cyModRef = useRef(null)
+  const [cyReady, setCyReady] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    import('cytoscape').then((m) => {
+      cyModRef.current = m.default
+      if (!cancelled) setCyReady(true)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!data || !containerRef.current || !cyModRef.current) return
+    if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null }
+
+    const communityColor = new Map()
+    let next = 0
+    const colorFor = (community) => {
+      if (!community) return null
+      if (!communityColor.has(community)) {
+        communityColor.set(community, COMMUNITY_PALETTE[next % COMMUNITY_PALETTE.length])
+        next += 1
+      }
+      return communityColor.get(community)
+    }
+
+    const elements = []
+    for (const n of data.nodes || []) {
+      const s = NODE_STYLE[n.type] || NODE_STYLE.entity
+      const border = colorFor(n.community)
+      elements.push({
+        data: {
+          id: n.id, label: n.label,
+          color: s.color,
+          shape: s.shape,
+          size: n.type === 'incident' ? 20 + Math.min(22, (n.meta?.risk_score || 0) / 3)
+            : n.type === 'ioc' ? 12 : 11,
+          border,
+        },
+      })
+    }
+    for (const e of data.edges || []) {
+      elements.push({
+        data: {
+          source: e.source, target: e.target,
+          color: e.kind === 'EXTRACTED' ? '#334155' : '#f97316',
+          width: e.kind === 'EXTRACTED' ? 1 : 0.5 + (e.confidence || 0.5) * 2,
+          dashed: e.kind !== 'EXTRACTED',
+          label: e.label,
+        },
+      })
+    }
+
+    const cy = cyModRef.current({
+      container: containerRef.current,
+      elements,
+      style: [
+        { selector: 'node', style: {
+            'background-color': 'data(color)', label: 'data(label)',
+            width: 'data(size)', height: 'data(size)', shape: 'data(shape)',
+            color: '#cbd5e1', 'font-size': 7, 'text-valign': 'bottom', 'text-margin-y': 3,
+        } },
+        { selector: 'node[?border]', style: {
+            'border-width': 2, 'border-color': 'data(border)',
+        } },
+        { selector: 'edge', style: {
+            width: 'data(width)', 'line-color': 'data(color)',
+            'line-style': 'data(dashed)', 'curve-style': 'bezier', opacity: 0.75,
+            'target-arrow-shape': 'triangle', 'target-arrow-color': 'data(color)',
+        } },
+      ],
+      layout: { name: 'cose', animate: true, padding: 20, idealEdgeLength: () => 70 },
+      wheelSensitivity: 0.2,
+      minZoom: 0.15,
+    })
+    cyRef.current = cy
+    cy.fit()
+    return () => { if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null } }
+  }, [data, cyReady])
+
+  if (!data || !data.nodes || data.nodes.length === 0) {
+    return null
+  }
+  const communities = data.summary?.communities || []
+  return (
+    <section id={`graph-${jobId}`} className="border border-emerald-800/60 rounded-lg overflow-hidden bg-slate-950/50"
+             aria-label="Job knowledge graph">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-emerald-900/50 bg-black/20">
+        <span className="text-[10px] tracking-widest text-emerald-400">
+          JOB KNOWLEDGE GRAPH — {data.nodes.length} NODES · {data.edges.length} EDGES · {data.summary?.n_communities || 0} COMMUNITIES
+        </span>
+        <div className="flex gap-3 text-[9px] text-slate-500">
+          {Object.entries({ INC: 'incident', TTP: 'technique', IOC: 'ioc', ENT: 'entity' }).map(([k, v]) => (
+            <span key={v} className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm inline-block" style={{ background: NODE_STYLE[v].color }} />
+              {k}
+            </span>
+          ))}
+          <span className="flex items-center gap-1">
+            <span className="w-3 border-t-2 border-dashed border-orange-500 inline-block" /> INFERRED
+          </span>
+        </div>
+      </div>
+      <div ref={containerRef} className="h-[360px]"
+           role="img"
+           aria-label={`Knowledge graph with ${data.nodes.length} nodes and ${data.edges.length} edges`} />
+      {communities.length > 0 && (
+        <div className="px-4 py-2 border-t border-emerald-900/50 text-[9px] text-slate-500 flex flex-wrap gap-x-4 gap-y-1">
+          {communities.slice(0, 8).map((c, i) => (
+            <span key={c.id} className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full inline-block"
+                    style={{ background: COMMUNITY_PALETTE[i % COMMUNITY_PALETTE.length] }} />
+              {c.id} · {c.n_nodes} nodes
+            </span>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

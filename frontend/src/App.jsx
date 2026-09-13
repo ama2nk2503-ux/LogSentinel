@@ -19,6 +19,9 @@ const ExportPage = lazy(() => import('./pages/ExportPage.jsx'))
 const Benchmark = lazy(() => import('./pages/Benchmark.jsx'))
 const Demo = lazy(() => import('./pages/Demo.jsx'))
 const SchemaDocs = lazy(() => import('./pages/SchemaDocs.jsx'))
+const ParserLab = lazy(() => import('./pages/ParserLab.jsx'))
+const Assistant = lazy(() => import('./pages/Assistant.jsx'))
+const Modes = lazy(() => import('./pages/Modes.jsx'))
 
 function PageLoader() {
   return (
@@ -50,6 +53,9 @@ export default function App() {
           <Route path="/export" element={<Suspense fallback={<PageLoader />}><ExportPage /></Suspense>} />
           <Route path="/benchmark" element={<Suspense fallback={<PageLoader />}><Benchmark /></Suspense>} />
           <Route path="/schema-docs" element={<Suspense fallback={<PageLoader />}><SchemaDocs /></Suspense>} />
+          <Route path="/parser-lab" element={<Suspense fallback={<PageLoader />}><ParserLab /></Suspense>} />
+          <Route path="/assistant" element={<Suspense fallback={<PageLoader />}><Assistant /></Suspense>} />
+          <Route path="/modes" element={<Suspense fallback={<PageLoader />}><Modes /></Suspense>} />
         </Route>
       </Route>
     </Routes>

@@ -56,13 +56,13 @@ export default function Upload() {
     }
   }, [samples])
 
-  const runSample = useCallback(async (name) => {
+  const runSample = useCallback(async (file) => {
     setBusy(true); setError('')
     try {
-      const text = await apiText(`/samples/${encodeURIComponent(name)}`)
+      const text = await apiText(`/samples/${encodeURIComponent(file)}`)
       const data = await api('/paste', {
         method: 'POST',
-        body: JSON.stringify({ text, name }),
+        body: JSON.stringify({ text, name: file }),
       })
       navigate(`/dashboard/${data.job_id}`)
     } catch (e) {
@@ -143,17 +143,31 @@ export default function Upload() {
 
         {showSamples && (
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {samples.map((s) => (
-              <button
-                key={s.name}
-                onClick={() => runSample(s.name)}
-                disabled={busy}
-                className="text-left px-4 py-3 text-xs border border-slate-800 hover:border-emerald-600 hover:bg-emerald-500/5 rounded flex justify-between items-center disabled:opacity-40"
-              >
-                <span className="text-slate-300">{s.name}</span>
-                <span className="text-slate-600">{(s.size / 1024).toFixed(1)} KB</span>
-              </button>
-            ))}
+            {samples.map((s) => {
+              const sev = (s.severity_hint || '').toUpperCase()
+              const sevCls = sev === 'CRITICAL' ? 'text-red-400 border-red-800/70 bg-red-500/10'
+                : sev === 'HIGH' ? 'text-orange-300 border-orange-800/70 bg-orange-500/10'
+                : sev === 'MEDIUM' ? 'text-amber-300 border-amber-800/70 bg-amber-500/10'
+                : 'text-sky-300 border-sky-800/70 bg-sky-500/10'
+              return (
+                <button
+                  key={s.file}
+                  onClick={() => runSample(s.file)}
+                  disabled={busy}
+                  className="text-left px-4 py-3 text-xs border border-slate-800 hover:border-emerald-600 hover:bg-emerald-500/5 rounded disabled:opacity-40"
+                >
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-slate-300 font-medium">{s.title || s.name}</span>
+                    {sev && <span className={`px-1.5 py-0.5 rounded border text-[9px] font-mono tracking-wider ${sevCls}`}>{sev}</span>}
+                  </div>
+                  {s.description && <p className="text-slate-500 mt-1 leading-4">{s.description.slice(0, 140)}{s.description.length > 140 ? '…' : ''}</p>}
+                  <div className="flex justify-between items-center mt-1.5 text-slate-600">
+                    <span className="font-mono">{`${s.sample_events} events · ${s.format}`}</span>
+                    <span>{s.iocs && s.iocs.length ? `${s.iocs.length} IOC` : 'no IOCs'}</span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>

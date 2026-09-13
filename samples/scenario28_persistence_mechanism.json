@@ -1,0 +1,6 @@
+{"timestamp": "2026-09-12T14:40:01Z", "source_ip": "185.23.45.67", "user": "svc_bak", "event_type": "process_telemetry", "message": "write /etc/cron.d/backdoor using SRC update, persistent re-run"}
+{"timestamp": "2026-09-12T14:40:07Z", "source_ip": "185.23.45.67", "user": "svc_bak", "event_type": "process_telemetry", "message": "systemctl enable /etc/systemd/system/system-updater.service"}
+{"timestamp": "2026-09-12T14:40:13Z", "source_ip": "185.23.45.67", "user": "svc_bak", "event_type": "process_telemetry", "message": "schtasks /create /tn Updater /sc onlogon /tr C:\\Users\\Public\\svc.exe"}
+{"timestamp": "2026-09-12T14:40:19Z", "source_ip": "185.23.45.67", "user": "svc_bak", "event_type": "process_telemetry", "message": "reg add HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v NetSvc /d C:\\Users\\Public\\svc.exe"}
+{"timestamp": "2026-09-12T14:40:25Z", "source_ip": "185.23.45.67", "user": "svc_bak", "event_type": "process_telemetry", "message": "powershell -enc AEUAYgBsAGkAbgBlAHIAQgBhAGMAawB1AHAALgBzAHYAYwAvAHMAdgBjAC4AZQB4AGUAIAAiAGMAcgBvAG4ALgBuAFAAbwBTAFIARAAiAA=="}
+{"timestamp": "2026-09-12T14:40:31Z", "source_ip": "185.23.45.67", "user": "svc_bak", "event_type": "process_telemetry", "message": "schtasks /create /tn MSOfficeUpdater /sc onstart /tr C:\\Windows\\Tasks\\svc2.exe /ru SYSTEM"}

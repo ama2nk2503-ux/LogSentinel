@@ -1,0 +1,5 @@
+ts=2026-09-12T14:30:01Z plc=PLC-01 tag=TEMP_101 value=87.4 unit=C status=ALARM
+ts=2026-09-12T14:30:02Z plc=PLC-01 tag=TEMP_102 value=93.2 unit=C status=ALARM
+ts=2026-09-12T14:30:06Z plc=PLC-01 tag=PRESS_201 value=141.8 unit=PSI status=ALARM
+ts=2026-09-12T14:30:09Z plc=PLC-02 tag=LEVEL_301 value=7.0 unit=M status=CRITICAL
+ts=2026-09-12T14:30:12Z plc=PLC-02 tag=TEMP_103 value=98.6 unit=C status=ALARM

@@ -9,7 +9,8 @@ import yaml
 from core.config import settings
 from core.storage import db
 
-RULE_FILES = ["authentication.yaml", "network.yaml", "web_attacks.yaml", "malware.yaml"]
+RULE_FILES = ["authentication.yaml", "network.yaml", "web_attacks.yaml", "malware.yaml",
+              "vendors.yaml"]
 
 # canonical event columns usable in `match:` / `group_by:`
 COLUMN_ALIASES = {
@@ -17,7 +18,7 @@ COLUMN_ALIASES = {
     "destination_port": "dst_port", "source_port": "src_port",
     "username": "username", "event_type": "event_type", "status": "status",
     "action": "action", "protocol": "protocol", "hostname": "hostname",
-    "event_id": "event_id", "severity": "severity",
+    "event_id": "event_id", "severity": "severity", "source": "source",
 }
 
 

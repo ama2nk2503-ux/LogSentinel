@@ -30,6 +30,8 @@ def _map_event(e: dict) -> dict:
         "risk_score": e.get("risk_score"),
         "category_name_threat": e.get("threat_type"),
         "uid": e.get("event_id"),
+        "dedup_id": e.get("dedup_event_id"),
+        "timestamp_source": e.get("timestamp_source"),
         "cloud": {
             "account": {
                 "uid": e.get("job_id"),

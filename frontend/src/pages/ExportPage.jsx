@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import JobPicker from '../components/JobPicker.jsx'
 import PageHeader from '../components/PageHeader.jsx'
-import { apiDownload } from '../lib/api.js'
+import { api, apiDownload } from '../lib/api.js'
 
 const FORMATS = [
     { id: 'json', label: 'JSON', desc: 'Universal schema events + IOCs' },
@@ -32,6 +32,18 @@ export default function ExportPage() {
         onSuccess: () => setError(''),
     })
 
+    // M4 item 8: chain-of-custody verification for the selected job
+    const integrity = useQuery({
+        queryKey: ['integrity', jobId],
+        queryFn: () => api(`/integrity/${jobId}`),
+        enabled: !!jobId,
+    })
+    const verifyMutation = useMutation({
+        mutationFn: () => api(`/integrity/${jobId}`),
+        onSuccess: () => { setError(''); integrity.refetch() },
+        onError: (e) => setError(String(e.message)),
+    })
+
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-3xl">
             <PageHeader title="SIEM EXPORT" subtitle="Every payload passes the privacy policy engine and structural validation before download." />
@@ -58,6 +70,37 @@ export default function ExportPage() {
             </button>
 
             {error && <div className="mt-3 text-sm text-red-400" role="alert">{error}</div>}
+
+            {jobId && (
+                <div className="mt-6 border border-slate-800 rounded p-4 bg-slate-900/60">
+                    <div className="text-[10px] tracking-widest text-slate-500 mb-2">CHAIN OF CUSTODY</div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <button
+                            onClick={() => verifyMutation.mutate()}
+                            disabled={verifyMutation.isPending}
+                            className="px-4 py-2 border border-emerald-700 text-emerald-400 rounded text-xs font-bold tracking-widest hover:bg-emerald-950/40 disabled:opacity-40">
+                            {verifyMutation.isPending ? 'VERIFYING…' : 'VERIFY INTEGRITY'}
+                        </button>
+                        {integrity.data && (
+                            <span className="text-xs font-mono" aria-live="polite">
+                                {integrity.data.valid
+                                    ? <span className="text-emerald-400">✓ chain valid — {integrity.data.batches} batch(es), {integrity.data.events_covered} event(s) covered</span>
+                                    : <span className="text-red-400">✗ CHAIN BROKEN — {integrity.data.problems.length} problem(s)</span>}
+                            </span>
+                        )}
+                    </div>
+                    {integrity.data && !integrity.data.valid && (
+                        <ul className="mt-2 text-[11px] text-red-300 list-disc list-inside">
+                            {integrity.data.problems.map((p) => (
+                                <li key={`${p.batch_no}-${p.issue}`}>batch {p.batch_no}: {p.issue}</li>
+                            ))}
+                        </ul>
+                    )}
+                    <p className="mt-2 text-[11px] text-slate-600">
+                        Every ingested batch extends a per-job SHA-256 hash chain; verification recomputes each link to prove stored evidence is unaltered.
+                    </p>
+                </div>
+            )}
 
             {jobId && (
                 <div className="mt-4 text-[11px] text-slate-600">

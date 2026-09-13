@@ -23,6 +23,8 @@ def _map_event(e: dict) -> dict:
             "severity": ECS_SEVERITY.get(sev_str, 10),
             "risk_score": e.get("risk_score"),
             "redaction": e.get("redaction_status"),
+            "dedup_id": e.get("dedup_event_id"),
+            "timestamp_source": e.get("timestamp_source"),
         },
         "@timestamp": e.get("ts"),
         "source": {

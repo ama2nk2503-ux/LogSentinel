@@ -1,0 +1,85 @@
+# M4: named-vendor detection rules (additive to the existing rule files).
+# Categories align with classifier.TAXONOMY so incidents cluster + classify.
+rules:
+  - rule_id: CLOUD_IAM_001
+    name: Cloud IAM Activity Burst
+    description: Many cloud identity/IAM events from one source in a short window
+    category: Credential Attack
+    severity: MEDIUM
+    match: { event_type: cloud_event }
+    group_by: [source_ip]
+    metric: count
+    threshold: 5
+    window: 10m
+
+  - rule_id: EDR_MALWARE_001
+    name: CrowdStrike Falcon High-Severity Detection
+    description: EDR flagged behavior with elevated score (malware-like activity)
+    category: Malware
+    severity: CRITICAL
+    match: { event_type: edr_event }
+    statuses: [failure, denied, blocked]
+    group_by: [hostname, source_ip]
+    metric: count
+    threshold: 1
+    window: 10m
+
+  - rule_id: DNS_TUNNEL_001
+    name: DNS Exfiltration / Tunneling (long label queries)
+    description: Repeated DNS queries with unusually long domain labels from one client
+    category: Data Exfiltration
+    severity: HIGH
+    match: { event_type: dns_query }
+    group_by: [source_ip]
+    metric: count
+    threshold: 5
+    window: 5m
+    regex: "[A-Za-z0-9-]{30,}\\."
+
+  - rule_id: OT_ALARM_001
+    name: Industrial Sensor Alarm / Fault
+    description: OT sensor reported ALARM/FAIL state on a controller
+    category: Unknown
+    severity: HIGH
+    match: { event_type: ot_sensor_event }
+    statuses: [failure]
+    group_by: [hostname]
+    metric: count
+    threshold: 1
+    window: 10m
+
+  # M5: VMware-specific detections (additive to generic brute-force rule).
+  - rule_id: VMW_ESXI_LOGIN_BURST_001
+    name: VMware ESXi Failed Login Burst
+    description: Repeated failed logins against an ESXi host from one source
+    category: Brute Force
+    severity: HIGH
+    match: { event_type: auth_failure, source: vmware-esxi }
+    group_by: [source_ip, username]
+    metric: count
+    threshold: 3
+    window: 5m
+
+  - rule_id: VMW_VCENTER_LOGIN_BURST_001
+    name: vCenter Authentication Failure Burst
+    description: Repeated authentication failures against vCenter from one source
+    category: Brute Force
+    severity: HIGH
+    match: { event_type: auth_failure, source: vmware-vcenter }
+    group_by: [source_ip]
+    metric: count
+    threshold: 3
+    window: 10m
+
+  - rule_id: VMW_NSX_FIREWALL_SCAN_001
+    name: NSX-T Firewall Drop Burst
+    description: NSX-T edge dropping traffic from one source across many ports
+    category: Port Scanning
+    severity: HIGH
+    match: { event_type: firewall_event }
+    statuses: [deny]
+    group_by: [source_ip]
+    metric: distinct
+    distinct_field: destination_port
+    threshold: 6
+    window: 10m

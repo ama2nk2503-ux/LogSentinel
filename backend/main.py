@@ -11,6 +11,8 @@ from api.routes_graph import router as graph_router
 from api.routes_intel import router as intel_router
 from api.routes_ioc import router as ioc_router
 from api.routes_jobs import router as jobs_router
+from api.routes_knowledge import router as knowledge_router
+from api.routes_opsec import router as opsec_router
 from api.routes_benchmark import router as benchmark_router
 from api.routes_policy import router as policy_router
 from api.routes_query import router as query_router
@@ -21,8 +23,12 @@ from api.routes_upload import router as upload_router
 from api.routes_geo import router as geo_router
 from api.routes_audit import router as audit_router
 from api.routes_assets import router as assets_router
+from api.routes_integrity import router as integrity_router
 from api.routes_ml import router as ml_router
+from api.routes_parserlab import router as parserlab_router
 from api.routes_schema import router as schema_router
+from api.routes_assistant import router as assistant_router
+from ai import llm as ai_llm
 from core.auth import decode_token, seed_admin
 from core.alerts import seed_alert_rules
 from core.config import settings
@@ -77,6 +83,11 @@ app.include_router(audit_router, prefix="/api")
 app.include_router(assets_router, prefix="/api")
 app.include_router(ml_router, prefix="/api")
 app.include_router(schema_router, prefix="/api")
+app.include_router(integrity_router, prefix="/api")
+app.include_router(parserlab_router, prefix="/api")
+app.include_router(knowledge_router, prefix="/api")
+app.include_router(opsec_router, prefix="/api")
+app.include_router(assistant_router, prefix="/api")
 
 
 @app.on_event("startup")
@@ -85,6 +96,7 @@ def startup() -> None:
     seed_admin()
     seed_alert_rules()
     seed_intel_reference()
+    ai_llm.warmup()
 
 
 @app.get("/api/health")

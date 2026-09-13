@@ -26,6 +26,8 @@ class UniversalEvent(BaseModel):
     iocs: list[dict] = Field(default_factory=list)
     threat_type: str = ""
     risk_score: int = 0
+    dedup_event_id: str = ""          # deterministic idempotent identity (M4)
+    timestamp_source: str = "ingest"   # "event" (parsed) vs "ingest" (fallback)
     pii_detected: list[str] = Field(default_factory=list)
     redaction_status: str = "not_applied"
     # --- internal enrichment (stripped from external responses when needed) ---
@@ -42,6 +44,7 @@ class UniversalEvent(BaseModel):
             self.source_port, self.destination_port, self.protocol,
             self.username, self.hostname, self.action, self.status,
             self.severity, self.message, self.threat_type, self.risk_score,
+            self.dedup_event_id, self.timestamp_source,
             json.dumps(self.iocs), json.dumps(self.pii_detected),
             json.dumps(self.mappings), "[]",
             json.dumps(self.extras),

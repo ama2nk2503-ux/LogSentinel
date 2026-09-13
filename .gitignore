@@ -25,3 +25,10 @@ frontend/playwright/.cache/
 # But allow sample logs (needed for demo + benchmark)
 !samples/*.log
 !samples/labeled/*.log
+
+graphify-out/
+.graphify_*
+
+# Dev error artifacts (runtime stderr logs)
+backend/uvicorn.log.err
+frontend/vite.log.err

@@ -1,0 +1,8 @@
+09/12/2026-14:30:01.000000  [**] [1:2002001:1] ET TROJAN Cobalt Strike Beacon Activity [**] [Classification: A Trojan was Detected] [Priority: 1]  {TCP} 10.99.0.50:4444 -> 192.168.1.10:49732
+09/12/2026-14:30:02.000000  [**] [1:2002002:1] ET TROJAN Cobalt Strike Beacon Activity [**] [Classification: A Trojan was Detected] [Priority: 1]  {TCP} 10.99.0.50:4444 -> 192.168.1.11:49733
+09/12/2026-14:30:03.000000  [**] [1:2002003:1] ET MALWARE Meterpreter Reverse Shell Detected [**] [Classification: A Trojan was Detected] [Priority: 2]  {TCP} 10.99.0.50:4444 -> 192.168.1.12:49734
+09/12/2026-14:30:04.000000  [**] [1:2002004:1] ET MALWARE Possible Emotet variant binary download [**] [Classification: Trojan-Other] [Priority: 1]  {TCP} 10.99.0.50:4444 -> 192.168.1.13:49735
+09/12/2026-14:30:05.000000  [**] [1:2002005:1] ET TROJAN Known C2 Domain attack.evil.example observed [**] [Classification: Command and Control] [Priority: 1]  {TCP} 10.99.0.50:6000 -> 45.83.42.99:443
+09/12/2026-14:30:06.000000  [**] [1:2002006:1] ET POLICY SMB2 NT Create AndX Request For a DLL File [**] [Classification: A Network Trojan was detected] [Priority: 2]  {TCP} 10.99.0.50:49172 -> 192.168.1.14:445
+09/12/2026-14:30:07.000000  [**] [1:2002007:1] ET MALWARE Powershell Encoded Command Execution [**] [Classification: Executable code was detected] [Priority: 1]  {TCP} 10.99.0.50:49736 -> 192.168.1.15:5555
+09/12/2026-14:30:08.000000  [**] [1:2002008:1] ET MALWARE Win32/Mimikatz Credential Dump Attempt [**] [Classification: Attempted Administrator Privilege Gain] [Priority: 1]  {TCP} 10.99.0.50:49737 -> 192.168.1.16:5599

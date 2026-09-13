@@ -64,6 +64,7 @@ def schema_docs(job_id: str):
                 "action": "action", "status": "status", "severity": "severity",
                 "message": "message", "threat_type": "threat_type", "risk_score": "risk_score",
                 "anomaly_score": "anomaly_score", "anomalous": "anomalous",
+                "dedup_event_id": "dedup_event_id", "timestamp_source": "timestamp_source",
             }
             JSON_COL = {"iocs": "iocs_json", "pii_detected": "pii_json"}
             coverage = {}

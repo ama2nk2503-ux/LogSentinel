@@ -1,0 +1,7 @@
+event_type,source_ip,username,status,message
+auth_failure,10.99.0.110,admin,failure,Failed password for admin
+auth_failure,10.99.0.110,root,failure,Failed password for root
+auth_failure,10.99.0.110,admin,failure,Failed password for admin
+auth_failure,10.99.0.110,service,failure,Failed password for service
+auth_failure,10.99.0.110,admin,failure,Failed password for admin
+auth_success,10.99.0.110,admin,success,Accepted password for admin

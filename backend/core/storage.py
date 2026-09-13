@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS events (
     message TEXT DEFAULT '',
     threat_type TEXT DEFAULT '',
     risk_score INTEGER DEFAULT 0,
+    dedup_event_id TEXT DEFAULT '',
+    timestamp_source TEXT DEFAULT 'ingest',
     iocs_json TEXT DEFAULT '[]',
     pii_json TEXT DEFAULT '[]',
     mappings_json TEXT DEFAULT '{}',
@@ -219,6 +221,37 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS learned_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL,
+    template_key TEXT NOT NULL,
+    template TEXT NOT NULL,
+    mask_hash TEXT NOT NULL,
+    line_count INTEGER DEFAULT 0,
+    sample TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS ix_learned_templates_job ON learned_templates(job_id);
+
+CREATE TABLE IF NOT EXISTS hash_chain (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL,
+    batch_no INTEGER NOT NULL,
+    batch_start_id INTEGER,
+    batch_end_id INTEGER,
+    events_count INTEGER DEFAULT 0,
+    batch_hash TEXT NOT NULL,
+    prev_hash TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_hash_chain ON hash_chain(job_id, batch_no);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 
@@ -256,6 +289,8 @@ _COLUMN_MIGRATIONS = [
     ("alert_rules", "min_criticality", "TEXT"),
     ("events", "anomaly_score", "REAL DEFAULT 0"),
     ("events", "anomalous", "INTEGER DEFAULT 0"),
+    ("events", "dedup_event_id", "TEXT DEFAULT ''"),
+    ("events", "timestamp_source", "TEXT DEFAULT 'ingest'"),
 ]
 
 
@@ -264,9 +299,17 @@ def _migrate(conn: sqlite3.Connection) -> None:
         existing = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
         if column not in existing:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+    # Index on a migrated column: must be created AFTER the ALTER above so
+    # pre-existing databases (without dedup_event_id) upgrade cleanly.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS ix_events_dedup ON events(job_id, dedup_event_id)")
 
 
 def init_db() -> None:
     with db() as conn:
         conn.executescript(SCHEMA)
         _migrate(conn)
+    # M4: backfill deterministic ids for rows ingested before the column
+    # existed (idempotent — recomputing yields the same hash).
+    from core.dedup_backfill import backfill_dedup_ids
+    backfill_dedup_ids()

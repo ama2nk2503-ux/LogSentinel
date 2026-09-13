@@ -1,0 +1,11 @@
+[
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:01Z","source_ip":"10.99.0.80","username":"admin","status":"failure","message":"Failed password for admin from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:02Z","source_ip":"10.99.0.80","username":"root","status":"failure","message":"Failed password for root from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:03Z","source_ip":"10.99.0.80","username":"admin","status":"failure","message":"Failed password for admin from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:04Z","source_ip":"10.99.0.80","username":"oracle","status":"failure","message":"Failed password for oracle from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:05Z","source_ip":"10.99.0.80","username":"admin","status":"failure","message":"Failed password for admin from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:06Z","source_ip":"10.99.0.80","username":"service","status":"failure","message":"Failed password for service from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:07Z","source_ip":"10.99.0.80","username":"admin","status":"failure","message":"Failed password for admin from 10.99.0.80"},
+  {"event_type":"auth_failure","ts_raw":"2026-09-12T14:30:08Z","source_ip":"10.99.0.80","username":"backup","status":"failure","message":"Failed password for backup from 10.99.0.80"},
+  {"event_type":"auth_success","ts_raw":"2026-09-12T14:31:00Z","source_ip":"10.99.0.80","username":"admin","status":"success","message":"Accepted password for admin from 10.99.0.80"}
+]

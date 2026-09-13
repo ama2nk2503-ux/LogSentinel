@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
+from normalization.identity import deterministic_event_id
 from normalization.schema import UniversalEvent
 
 TS_FORMATS = [
@@ -71,6 +72,7 @@ def normalize(fields: dict | None, job_id: str, line_no: int | None,
     mappings: dict = {}
 
     ts_raw = None
+    ts_source = "ingest"
     for key, value in fields.items():
         if key.startswith("_"):
             continue
@@ -92,6 +94,8 @@ def normalize(fields: dict | None, job_id: str, line_no: int | None,
     parsed_ts = parse_timestamp(ts_raw if isinstance(ts_raw, str) else None)
     if parsed_ts:
         ev.timestamp = parsed_ts
+        ts_source = "event"
+    ev.timestamp_source = ts_source
 
     sev = str(fields.get("severity_hint", "") or "").upper()
     ev.severity = sev if sev in VALID_SEVERITY else "LOW"
@@ -101,6 +105,11 @@ def normalize(fields: dict | None, job_id: str, line_no: int | None,
         ev.source = fields.get("source", "")
     ev.extras = dict(fields.get("_extras") or {})
     ev.mappings = mappings
+    # Deterministic identity: hash of (timestamp|hostname|process|raw_text).
+    # The full raw line keeps ids stable regardless of parser coverage; the
+    # constant marker stands in when no timestamp could be parsed.
+    ev.dedup_event_id = deterministic_event_id(
+        ev.timestamp, ev.hostname, ev.source, raw or ev.message)
     return ev
 
 

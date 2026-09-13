@@ -128,9 +128,13 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
                     "INSERT INTO events (event_id, job_id, line_no, ts, event_type, source,"
                     " src_ip, dst_ip, src_port, dst_port, protocol, username, hostname,"
                     " action, status, severity, message, threat_type, risk_score,"
+                    " dedup_event_id, timestamp_source,"
                     " iocs_json, pii_json, mappings_json, attack_json, extras_json)"
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     [ev.to_row() for ev, _ in batch])
+                # M4 chain-of-custody: extend the hash chain after each batch.
+                from core.hashchain import append_batch
+                append_batch(conn, job_id)
             _state["lines_emitted"] += len(batch)
 
             if _state["lines_emitted"] % (lines_per_tick * 3) < lines_per_tick:

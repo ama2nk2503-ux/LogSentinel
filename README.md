@@ -15,7 +15,46 @@ Login:  admin / changeme
 URL:    http://127.0.0.1:5173
 ```
 
-Click **DEMO MODE** to watch four attack scenarios flow through the entire pipeline with live narration.
+Click **DEMO MODE** to watch all **28 bundled attack scenarios** flow through the entire pipeline with live narration. On the **Upload** page, **LOAD SAMPLE SCENARIOS** shows a severity-coded grid of the full corpus (badge, description, event count, format, IOC count); pick one and it runs through the real pipeline.
+
+---
+
+## Sample Scenarios (Demo Corpus)
+
+`samples/manifest.yaml` drives the demo corpus: **28 curated scenarios** across 18 log formats, each tagged with a `severity_hint`, real intel seed IOCs, `remediation` guidance, and the detection rules it is designed to trigger. Severity badges in the UI follow the same bands as the risk scorer: **CRITICAL** (≥81), **HIGH** (50+), **MEDIUM** (20+), **LOW**.
+
+| # | Scenario | Format | Events | Severity hint |
+|---|----------|--------|--------|---------------|
+| 1 | SSH Brute Force → Account Compromise | syslog | 16 | CRITICAL |
+| 2 | Network Port Scan | firewall | 21 | MEDIUM |
+| 3 | Web Application Attack | apache | 13 | HIGH |
+| 4 | Windows Logon Burst + PowerShell | windows | 18 | CRITICAL |
+| 5 | Nginx XSS Probing | nginx | 3 | LOW |
+| 6 | SQL Injection (Union Select) | apache | 4 | MEDIUM |
+| 7 | Path Traversal Attempt | apache | 4 | MEDIUM |
+| 8 | OS Command Injection | apache | 9 | CRITICAL |
+| 9 | Suricata IDS Alert Burst | suricata | 8 | HIGH |
+| 10 | Cisco ASA Port Scan | cisco_asa | 16 | HIGH |
+| 11 | Fortinet Port Scan | fortinet | 18 | HIGH |
+| 12 | Palo Alto PAN-OS Port Scan | palo_alto | 18 | HIGH |
+| 13 | Check Point Port Scan | check_point | 18 | HIGH |
+| 14 | AWS CloudTrail IAM Burst | cloudtrail | 8 | MEDIUM |
+| 15 | Okta Brute Force | okta | 8 | MEDIUM |
+| 16 | CrowdStrike PowerShell Detections | crowdstrike | 6 | HIGH |
+| 17 | DNS Tunneling | dns | 10 | HIGH |
+| 18 | OT Sensor Alarm Storm | ot_sensor | 5 | HIGH |
+| 19 | SSH Brute Force (JSON array) | json | 9 | HIGH |
+| 20 | Suricata EVE Alert (JSON) | json | 8 | HIGH |
+| 21 | CrowdStrike EDR CSV | csv | 7 | HIGH |
+| 22 | SSH Brute Force (CSV) | csv | 7 | HIGH |
+| 23 | Command Injection (Apache) | apache | 9 | CRITICAL |
+| 24 | VMware ESXi Failed Login Burst | esxi | 10 | HIGH |
+| 25 | VMware vCenter Authentication Failure Burst | vcenter | 9 | HIGH |
+| 26 | VMware NSX-T Firewall Drop Scan | nsx | 16 | HIGH |
+| 27 | Network Scan (Many Hosts) | firewall | 13 | MEDIUM |
+| 28 | Persistence Mechanism | json | 6 | HIGH |
+
+**Verified kill-chains** (empirical results via `POST /api/paste`): the four CRITICAL flag ships reproduce live — scenario 1 → risk **91**, scenario 4 → **83**, scenario 8 → **100**, scenario 23 → **100**. The EDR scenarios 16/21 land at **HIGH** (61/62): EDR rule scoring caps at 75 on a single attack category, so CRITICAL is not reachable deterministically. Scenarios seed real intel indicators (`185.23.45.67`, `attack.evil.example`, `45.83.42.99`, `203.0.113.9`, emotet hash `590b972e56e9dec8e5db5f4205b717ec`) so detections land on genuine reputation signals.
 
 ---
 
@@ -143,7 +182,7 @@ Surfaced as the Explorer **ANOMALY** column (★ = flagged) and the Dashboard
 |---------|---------|
 | **ATT&CK Kill-Chain** | Every detection mapped to MITRE ATT&CK techniques; animated 14-tactic progression per attacker |
 | **Live Attack Graph** | Cytoscape.js entity graph with severity-colored edges, risk-sized nodes, drill-down panel |
-| **Cinematic Demo Mode** | One-click run of 4 attack scenarios through real pipeline milestones with live narration |
+| **Cinematic Demo Mode** | One-click run of all 28 bundled attack scenarios through real pipeline milestones with live narration |
 | **Ask-the-Data** | Natural-language query → intent chips + filtered results. Deterministic parser, zero AI |
 | **PDF Threat Report** | Branded multi-page report: exec summary, findings, evidence, charts (reportlab) |
 
@@ -276,7 +315,7 @@ logsentinel/
 │   │       ├── Privacy.jsx     #   Editable privacy policy UI
 │   │       ├── ExportPage.jsx  #   SIEM export (6 formats + PDF)
 │   │       ├── Benchmark.jsx   #   Live benchmark results
-│   │       └── Demo.jsx        #   Cinematic 4-scenario demo
+│   │       └── Demo.jsx        #   Cinematic 28-scenario demo
 │   ├── vite.config.js          #   Dev server + API proxy
 │   └── package.json
 │
@@ -292,11 +331,12 @@ logsentinel/
 │   ├── geoip/ranges.csv        #   Offline IP → geo subnet table (M2)
 │   └── attack_mapping.json     #   rule_id → MITRE ATT&CK technique mapping
 │
-├── samples/                    # Bundled demo scenarios
-│   ├── scenario1_ssh_bruteforce.log
-│   ├── scenario2_port_scan.log
-│   ├── scenario3_web_attack.log
-│   ├── scenario4_windows_auth.xml
+├── samples/                    # Bundled demo scenarios (28, manifest-driven)
+│   ├── manifest.yaml           #   Corpus metadata: severity_hint, iocs, remediation, rules
+│   ├── scenario1_ssh_bruteforce.log        #   SSH kill chain (syslog, CRITICAL)
+│   ├── scenario4_windows_auth.xml          #   Windows logon burst + PS (xml, CRITICAL)
+│   │   …  24 more in scenario{2..28}_*.{log,xml,json,csv}
+│   ├── scenario28_persistence_mechanism.json
 │   └── labeled/                #   Ground-truth for benchmark
 │       ├── ioc_labels.json
 │       └── pii_labels.json
@@ -305,7 +345,7 @@ logsentinel/
 │   ├── design.md               #   Technical design (17 pipeline stages)
 │   └── wow_features.spec.md    #   Feature specs with EARS requirements
 │
-├── tests/                      # 149 unit + integration tests
+├── tests/                      # 317 unit + integration tests
 │   ├── conftest.py             #   Shared fixtures
 │   ├── test_parsers.py         #   Format parsers
 │   ├── test_ioc.py             #   IOC extraction
@@ -315,6 +355,7 @@ logsentinel/
 │   ├── test_detection.py       #   Rule engine
 │   ├── test_detector.py        #   Format detection
 │   ├── test_correlation.py     #   Correlation
+│   ├── test_demo_samples.py    #   Demo corpus integrity + enrichment (28 scenarios)
 │   ├── test_intent.py          #   Ask-the-Data
 │   ├── test_intel.py           #   Intelligence aggregation
 │   ├── test_attack.py          #   ATT&CK mapping
@@ -394,7 +435,7 @@ All endpoints require JWT auth (via `Authorization: Bearer <token>`) except `/ap
 | `POST` | `/api/query` | Ask-the-Data natural language query |
 | `POST` | `/api/benchmark/run` | Run benchmark suite |
 | `GET` | `/api/benchmark/results` | Latest benchmark results |
-| `GET` | `/api/samples` | List bundled demo scenarios |
+| `GET` | `/api/samples` | List bundled demo scenarios (28, with severity_hint / iocs / remediation) |
 | `POST` | `/api/stream/start\|/stop` | Start/stop live log stream (M1) |
 | `GET` | `/api/stream/recent` | Fresh events for the EVENT WALL (M1) |
 
@@ -403,14 +444,18 @@ All endpoints require JWT auth (via `Authorization: Bearer <token>`) except `/ap
 ## Testing
 
 ```bash
-# Backend: 149 unit + integration tests
+# Backend: 317 unit + integration tests (incl. test_demo_samples.py demo-corpus suite)
 .venv\Scripts\python -m pytest           # Windows
 source .venv/bin/activate && pytest      # Linux/Mac
 
 # Run a specific module
 .venv\Scripts\python -m pytest tests/test_ml.py -v
 
-# Frontend: 31 audit e2e (axe on all 14 pages + functional flows)
+# Demo corpus suite (manifest/samples coherence: 28 scenarios, severity_hint validity,
+# ≥6 flagship HIGH/CRITICAL, IOCs, remediation, real record counts)
+.venv\Scripts\python -m pytest tests/test_demo_samples.py -v
+
+# Frontend: 41 audit e2e (axe on all 18 pages + 23 functional flows)
 cd frontend
 npx playwright test
 ```

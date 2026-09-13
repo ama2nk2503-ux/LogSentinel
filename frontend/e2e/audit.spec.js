@@ -17,6 +17,9 @@ const PAGES = [
   { path: '/export', name: 'Export', markers: ['SIEM EXPORT'] },
   { path: '/benchmark', name: 'Benchmark', markers: ['BENCHMARK', 'RUN BENCHMARK'] },
   { path: '/schema-docs', name: 'SchemaDocs', markers: ['UNIVERSAL EVENT SCHEMA DOCS'] },
+  { path: '/parser-lab', name: 'ParserLab', markers: ['PARSER LAB'] },
+  { path: '/assistant', name: 'Assistant', markers: ['AI ASSISTANT'] },
+  { path: '/modes', name: 'Modes', markers: ['THE OFFLINE GUARANTEE'] },
 ]
 
 let token = ''
@@ -276,8 +279,8 @@ test('Upload: drag-drop file upload creates a job and navigates to dashboard', a
 test('Upload: running a sample scenario navigates to dashboard', async ({ page }) => {
   await login(page)
   await page.getByRole('button', { name: /LOAD SAMPLE SCENARIOS/ }).click()
-  await expect(page.getByRole('button', { name: /KB/ }).first()).toBeVisible()
-  await page.getByRole('button', { name: /KB/ }).first().click()
+  await expect(page.getByRole('button', { name: /events \u00b7/ }).first()).toBeVisible()
+  await page.getByRole('button', { name: /events \u00b7/ }).first().click()
   await page.waitForURL(/\/dashboard\/[0-9a-f-]+/i)
 })
 
@@ -288,6 +291,65 @@ test('Benchmark: run renders live results and can be re-run', async ({ page }) =
   await expect(page.getByText('LAST RUN:')).toBeVisible({ timeout: 90_000 })
   await expect(page.getByText('PARSING ACCURACY')).toBeVisible()
   await expect(page.getByText('IOC EXTRACTION')).toBeVisible()
+})
+
+test('Parser Lab: live parsing routes vendors and labels fallback without DB writes', async ({ page }) => {
+  await login(page)
+  await page.goto('/parser-lab')
+  const input = page.getByLabel('PASTE RAW LOG LINES')
+  await input.fill([
+    '%ASA-6-302013: Built inbound TCP connection 1 for outside:5.6.7.8/443 to inside:10.1.1.5/5000',
+    'date=2026-08-25 time=10:30:01 devname=FW1 action=deny srcip=1.2.3.4 dstip=5.6.7.8 dstport=22 proto=6',
+    'Aug 25 10:30:01 srv01 sshd[123]: Failed password for admin from 185.23.45.67 port 5000 ssh2',
+    'gibberish unstructured line with no shape 123',
+  ].join('\n'))
+  await expect(page.getByText('cisco_asa').first()).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('fortinet').first()).toBeVisible()
+  await expect(page.getByText('unknown — generic fallback').first()).toBeVisible()
+  await expect(page.getByText(/NAMED PARSER %/)).toBeVisible()
+  await expect(page.getByText(/DISTINCT FORMATS/)).toBeVisible()
+})
+
+test('Modes: three mode cards and offline guarantee are inspectable', async ({ page }) => {
+  await login(page)
+  await page.goto('/modes')
+  await expect(page.getByText('Demo (bundled samples)')).toBeVisible()
+  await expect(page.getByText('Production (offline, air-gapped)')).toBeVisible()
+  await expect(page.getByText('Custom upload')).toBeVisible()
+  await expect(page.getByText('THE OFFLINE GUARANTEE')).toBeVisible()
+  await expect(page.getByText('No cloud APIs')).toBeVisible()
+})
+
+test('Export: verify integrity confirms the hash chain for the seed job', async ({ page }) => {
+  await login(page)
+  await page.goto('/export')
+  await selectSeedJob(page)
+  await expect(page.getByText('CHAIN OF CUSTODY')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/chain valid/)).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: /VERIFY INTEGRITY/ }).click()
+  await expect(page.getByText(/chain valid/)).toBeVisible({ timeout: 15_000 })
+})
+
+test('Threats: rule-vs-ML agreement panel renders counts', async ({ page }) => {
+  await login(page)
+  await page.goto('/threats')
+  await selectSeedJob(page)
+  await expect(page.getByText('RULES vs ML — WHO SAW WHAT')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('RULES ONLY', { exact: true })).toBeVisible()
+  await expect(page.getByText('ML ONLY', { exact: true })).toBeVisible()
+  await expect(page.getByText('BOTH AGREED', { exact: true })).toBeVisible()
+})
+
+test('Assistant: sends a chat message and gets a grounded deterministic answer', async ({ page }) => {
+  await login(page)
+  await page.goto('/assistant')
+  await selectSeedJob(page)
+  await page.getByLabel('Ask a question about this dataset').fill('how do I fix the brute force?')
+  await page.getByRole('button', { name: 'SEND' }).click()
+  await expect(page.getByTestId('ai-answer')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('DETERMINISTIC').first()).toBeVisible()
+  await expect(page.getByText('Block source IP at the perimeter').first()).toBeVisible()
+  await expect(page.getByText('EVIDENCE / FACTS USED (')).toBeVisible()
 })
 
 test('mobile: sidebar opens via menu and closes on Escape', async ({ browser }) => {
