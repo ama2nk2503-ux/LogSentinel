@@ -322,8 +322,8 @@ deterministic -- same input, same output, every time.
   What it is:        A guided, narrated walkthrough of all 28 bundled attack
                      scenarios spinning through the ACTUAL pipeline.
   How it works:      All 28 scenarios (SSH brute-force, port scans, web
-                     attacks, Windows auth, EDR, cloud, VMware, OT … across
-                     18 log formats) feed real sample logs into the real
+attacks, Windows auth, EDR, cloud, VMware, OT … across
+                      20 log formats) feed real sample logs into the real
                      parsing/detection pipeline. Metadata comes from
                      samples/manifest.yaml (severity_hint, iocs, remediation,
                      rule_ids), so queued scenarios carry severity badges and

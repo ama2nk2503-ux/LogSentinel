@@ -21,7 +21,7 @@ Click **DEMO MODE** to watch all **28 bundled attack scenarios** flow through th
 
 ## Sample Scenarios (Demo Corpus)
 
-`samples/manifest.yaml` drives the demo corpus: **28 curated scenarios** across 18 log formats, each tagged with a `severity_hint`, real intel seed IOCs, `remediation` guidance, and the detection rules it is designed to trigger. Severity badges in the UI follow the same bands as the risk scorer: **CRITICAL** (≥81), **HIGH** (50+), **MEDIUM** (20+), **LOW**.
+`samples/manifest.yaml` drives the demo corpus: **28 curated scenarios** across 20 log formats, each tagged with a `severity_hint`, real intel seed IOCs, `remediation` guidance, and the detection rules it is designed to trigger. Severity badges in the UI follow the same bands as the risk scorer: **CRITICAL** (≥81), **HIGH** (50+), **MEDIUM** (20+), **LOW**.
 
 | # | Scenario | Format | Events | Severity hint |
 |---|----------|--------|--------|---------------|
@@ -104,10 +104,11 @@ Open **http://127.0.0.1:5173**, login with `admin` / `changeme`.
 
 ```
                     ┌──────────────────────────────────────────────┐
-                    │              React Frontend                   │
+                    │               React Frontend (18 pages)       │
                     │  Upload · Dashboard · Explorer · Threats      │
-                    │  Graph · Intel · Alerts · Live · Compliance   │
+                    │  Alerts · Live · Graph · Intel · Compliance   │
                     │  Assets · Privacy · Export · Benchmark · Demo │
+                    │  Schema Docs · Parser Lab · Assistant · Modes │
                     └──────────────────┬───────────────────────────┘
                                        │ REST API
                     ┌──────────────────┴───────────────────────────┐
@@ -115,7 +116,7 @@ Open **http://127.0.0.1:5173**, login with `admin` / `changeme`.
                     │                                               │
                     │  ┌─────────┐  ┌──────────┐  ┌────────────┐  │
                     │  │ Parsers │→ │Detection │→ │  Privacy   │  │
-                    │  │  (9)    │  │ Engine   │  │  Gate      │  │
+                    │  │ (22)    │  │ Engine   │  │  Gate      │  │
                     │  └────┬────┘  └────┬─────┘  └─────┬──────┘  │
                     │       │            │               │         │
                     │  ┌────┴────────────┴───────────────┴──────┐  │
@@ -137,9 +138,9 @@ is trained per job and fed back into incident escalation with a reason line:
  2. VALIDATION        Extension whitelist (.log .txt .json .csv .xml), 200 MB cap
  3. CHUNKED READ      5k-line batches from disk, flat memory profile
  4. FORMAT DETECTION  Heuristic scoring per format → confidence %
- 5. PARSER DISPATCH   Registry → syslog | apache | windows | firewall | json | csv | xml | generic
+ 5. PARSER DISPATCH   Registry → 22 signatures incl. vendor: cisco_asa | fortinet | palo_alto | check_point | cloudtrail | okta | crowdstrike | esxi | vcenter | nsx | dns | ot_sensor (Drain-style template fallback)
  6. NORMALIZATION     UniversalEvent schema + field-mapping provenance
- 7. PERSISTENCE       Batched inserts to SQLite (WAL mode)
+ 7. PERSISTENCE       Batched inserts to SQLite (WAL mode) + per-batch SHA-256 hash chain (M4)
  8. IOC EXTRACTION    IPv4/IPv6/domains/URLs/MD5/SHA1/SHA256 + suspicious patterns
  9. PII DETECTION     Email / phone / name / API key / password / token / session
 10. RULE ENGINE       YAML-driven, windowed stateful evaluation
@@ -149,7 +150,7 @@ is trained per job and fed back into incident escalation with a reason line:
 14. RISK SCORING      0–100 additive weighted factors, every point explained
 15. PRIVACY GATE      SINGLE output choke: API / export / PDF / graph / search
 16. THREAT INTEL      Indicator aggregation + human-readable reports
-17. EXPORT            JSON · CSV · CEF · LEEF · STIX 2.1 · Syslog · PDF
+17. EXPORT            JSON · CSV · CEF · LEEF · STIX 2.1 · Syslog · ECS · OCSF · PDF
 ```
 
 **ML ANOMALY SCORING** (`backend/ml/`, scikit-learn, seeded `random_state=42`,
@@ -169,7 +170,9 @@ Surfaced as the Explorer **ANOMALY** column (★ = flagged) and the Dashboard
 
 | Feature | Details |
 |---------|---------|
-| **Universal Parsing** | 9 format parsers behind a registry with auto-detection and real confidence scores |
+| **Universal Parsing** | 22 format signatures (19 line parsers + 7 file handlers) behind a registry with auto-detection and real confidence scores |
+| **Vendor Parsing (M4)** | Cisco ASA/FTD, Fortinet FortiGate, Palo Alto PAN-OS, Check Point, AWS CloudTrail, Okta, CrowdStrike, DNS, OT sensors, VMware ESXi / vCenter / NSX-T |
+| **Template Mining (M4)** | Unsupervised Drain-style fallback learns templates from low-confidence lines; per-event provenance for audit |
 | **IOC Extraction** | IPv4/IPv6/domains/URLs/MD5/SHA1/SHA256 + encoded PowerShell, SQLi, traversal — deterministic validation only |
 | **YAML Threat Rules** | External rules in `rules/*.yaml` — brute force, port scan, credential abuse, web attacks, malware |
 | **Correlation Engine** | Entity + time clustering; identity-linked chains (e.g. failed logins → success → suspicious command) |
@@ -185,14 +188,21 @@ Surfaced as the Explorer **ANOMALY** column (★ = flagged) and the Dashboard
 | **Cinematic Demo Mode** | One-click run of all 28 bundled attack scenarios through real pipeline milestones with live narration |
 | **Ask-the-Data** | Natural-language query → intent chips + filtered results. Deterministic parser, zero AI |
 | **PDF Threat Report** | Branded multi-page report: exec summary, findings, evidence, charts (reportlab) |
+| **Schema Docs** | Per-job field docs: UniversalEvent schema + target ECS (`@1.16`) / OCSF (`@1.3`) mapping preview (`/api/schema/docs/{job_id}`) |
+| **Parser Lab** | Interactive parsing playground against the exact ingestion code path (confidence scoring + registered parsers), read-only — no DB writes (M4) |
+| **Chain of Custody** | Per-job SHA-256 batch hash chain over stored evidence; any post-hoc edit breaks verification (`/api/integrity/{job_id}`) (M4) |
+| **Knowledge Graph** | GraphRAG-ready JSON export — incidents, IOCs, MITRE techniques, entities with community labels and honest EXTRACTED/INFERRED provenance (`/api/knowledge/{job_id}`) |
+| **OPSEC Actor Ops** | Actor cluster attribution + scoring — posture breakdown with provenance stamps (`EXTRACTED`/`INFERRED`), plus plain-language actor narratives (`/api/opsec/{job_id}`) |
+| **AI Assistant** | Session chat over one dataset, grounded in deterministic computed facts + mandated disclaimer; optional local LLM (Ollama) auto-on via localhost probe, else fully deterministic — never blocks or dials the network beyond the probe |
 
-### Operational Capabilities (M1–M3)
+### Operational Capabilities (M1–M4)
 
 | Milestone | Feature | Details |
 |-----------|---------|---------|
 | **M1** | Live SOC Ops | Alerting engine (YAML rules, dedup, SMTP/webhook notify, ack/resolve/FP lifecycle), incident triage (NEW→RESOLVED + analyst + notes), MITRE investigation timeline, real-time EVENT WALL (1.5s polling) |
 | **M2** | Intel / Geo / Compliance / Assets | Offline GeoIP enrichment, bundled reputation feed (7 indicators), NIST SP 800-53 / CIS v8 / ISO 27001 audits with Markdown reports, asset inventory + per-asset alert rules |
 | **M3** | In-loop ML anomaly scoring | Seeded offline IsolationForest per job → `anomaly_score` + `anomalous` flags, evidence-driven incident risk bump with reason, Explorer ANOMALY column (★), Dashboard ML card, `GET /api/ml/{job_id}` |
+| **M4** | Parser Lab + Evidence Integrity | Vendor parsers (network SIEM, cloud, EDR, VMware), Drain-style template mining fallback, ECS/OCSF schema exports, per-job schema docs, chain-of-custody hash chain, knowledge graph, OPSEC actor attribution, optional local-LLM assistant |
 
 ### Privacy & Security
 
@@ -223,9 +233,15 @@ logsentinel/
 │   │   ├── routes_geo.py       #   GET /geo/lookup, /geo/job/{id}
 │   │   ├── routes_audit.py     #   Compliance audits + Markdown reports
 │   │   ├── routes_assets.py    #   GET /assets (asset inventory)
+│   │   ├── routes_assistant.py #   GET /assistant/status, POST /assistant (optional local-LLM chat)
 │   │   ├── routes_ml.py        #   GET /api/ml/{job_id} (model + anomalies)
-│   │   ├── routes_privacy.py   #   GET/PUT /policy, POST /policy/preview
-│   │   ├── routes_export.py    #   GET /export/{job}?format= (6 formats)
+│   │   ├── routes_integrity.py #   GET /integrity/{job_id} (chain-of-custody verify)
+│   │   ├── routes_knowledge.py #   GET /knowledge/{job_id} (GraphRAG-ready graph)
+│   │   ├── routes_opsec.py     #   GET /opsec/{job_id} (actor attribution + narratives)
+│   │   ├── routes_parserlab.py #   POST /parserlab/parse (M4 playground, read-only)
+│   │   ├── routes_schema.py    #   GET /schema/docs/{job_id}, /schema/fields
+│   │   ├── routes_policy.py    #   GET/PUT /policy, POST /policy/preview
+│   │   ├── routes_export.py    #   GET /export/{job}?format= (8 formats)
 │   │   ├── routes_ioc.py       #   IOC watchlist
 │   │   ├── routes_jobs.py      #   GET /jobs, /jobs/{id}
 │   │   ├── routes_benchmark.py #   POST /benchmark/run, GET /benchmark/results
@@ -246,7 +262,9 @@ logsentinel/
 │   │   ├── assets.py           #   Asset inventory derivation
 │   │   ├── benchmark.py        #   Live benchmark harness
 │   │   ├── jobs.py             #   Job lifecycle management
-│   │   └── ingest.py           #   File upload + chunked reading
+│   │   ├── ingest.py           #   File upload + chunked reading
+│   │   ├── hashchain.py        #   Per-batch SHA-256 evidence hash chain (M4)
+│   │   └── dedup_backfill.py   #   Entity-identity dedup backfill for existing jobs
 │   ├── ml/                     # In-loop ML anomaly scorer (M3)
 │   │   ├── features.py         #   Deterministic 16-dim feature vector
 │   │   └── model.py            #   IsolationForest fit / score / bump, per-job persist
@@ -258,14 +276,25 @@ logsentinel/
 │   │   ├── firewall_parser.py  #   Key=value firewall logs
 │   │   ├── windows_parser.py   #   Windows XML event logs
 │   │   ├── structured_parser.py#   JSON / CSV structured data
-│   │   └── generic_parser.py   #   Fallback parser
+│   │   ├── generic_parser.py   #   Fallback parser
+│   │   ├── vendor_registry.py  #   Vendor parser registration (M4)
+│   │   ├── vendor_parsers.py   #   Cisco ASA/FTD, Fortinet, PAN-OS, Check Point, CloudTrail, Okta, CrowdStrike, DNS, OT (M4)
+│   │   ├── vendor_structured.py#   Structured vendor handlers (cloudtrail/okta/crowdstrike file forms)
+│   │   ├── vmware_esxi_parser.py#  VMware ESXi hostd/vmkernel (M4)
+│   │   ├── vmware_vcenter_parser.py # VMware vCenter vpxd (M4)
+│   │   └── vmware_nsx_parser.py #   VMware NSX-T firewall logs (M4)
+│   ├── mining/                 # Unsupervised template mining (M4)
+│   │   └── template_miner.py   #   Drain-style low-confidence fallback
 │   ├── detection/              # Detection engine
 │   │   ├── engine.py           #   YAML rule evaluation (windowed, stateful)
 │   │   ├── correlator.py       #   Entity + time clustering
 │   │   ├── classifier.py       #   BENIGN / SUSPICIOUS / MALICIOUS
 │   │   ├── attack.py           #   MITRE ATT&CK mapping + kill-chain
 │   │   ├── risk.py             #   0–100 risk scoring with reasons
-│   │   └── intent.py           #   Ask-the-Data deterministic parser
+│   │   ├── intent.py           #   Ask-the-Data deterministic parser
+│   │   ├── kgraph.py           #   Deterministic job knowledge graph (communities + provenance)
+│   │   ├── opsec.py            #   OPSEC actor attribution + posture scoring
+│   │   └── describe.py         #   Plain-language incident/actor narratives (template-driven)
 │   ├── ioc/                    # IOC extraction
 │   │   ├── extractor.py        #   Regex + pattern extraction
 │   │   └── validator.py        #   IPv4/IPv6/domain/URL/hash validation
@@ -275,11 +304,19 @@ logsentinel/
 │   │   └── redactor.py         #   Value redaction + hash mode
 │   ├── normalization/          # Event normalization
 │   │   ├── normalizer.py       #   Field mapping + UniversalEvent schema
+│   │   ├── identity.py         #   Entity identity normalization/dedup
 │   │   └── schema.py           #   Event data model
 │   ├── intelligence/           # Threat intel
 │   │   └── aggregator.py       #   IOC aggregation + report generation
+│   ├── ai/                     # Optional local-LLM bridge
+│   │   ├── llm.py              #   Auto-on Ollama bridge (localhost probe, light models)
+│   │   ├── assistant.py        #   Grounded session chat (deterministic facts + disclaimer)
+│   │   └── summary.py          #   Deterministic safety-net summaries
 │   ├── exporters/              # SIEM export formats
 │   │   ├── exporters.py        #   JSON / CSV / CEF / LEEF / STIX 2.1 / Syslog
+│   │   ├── ecs_export.py       #   Elastic Common Schema `@1.16` (M4)
+│   │   ├── ocsf_export.py      #   Open Cybersecurity Schema `@1.3` (M4)
+│   │   ├── common.py           #   Shared export helpers
 │   │   ├── validator.py        #   Pre-download structural validation
 │   │   └── pdf_report.py       #   Branded PDF report (reportlab)
 │   └── streaming/              # Live simulation
@@ -313,8 +350,12 @@ logsentinel/
 │   │       ├── Compliance.jsx  #   Framework audits + Markdown report download
 │   │       ├── Assets.jsx      #   Asset inventory by criticality/risk
 │   │       ├── Privacy.jsx     #   Editable privacy policy UI
-│   │       ├── ExportPage.jsx  #   SIEM export (6 formats + PDF)
+│   │       ├── ExportPage.jsx  #   SIEM export (8 formats + PDF)
 │   │       ├── Benchmark.jsx   #   Live benchmark results
+│   │       ├── SchemaDocs.jsx  #   Per-job schema + ECS/OCSF field mapping (M4)
+│   │       ├── ParserLab.jsx   #   Interactive parser playground (M4)
+│   │       ├── Assistant.jsx   #   Optional AI assistant chat
+│   │       ├── Modes.jsx       #   Runtime modes: Demo / Production / Air-gapped
 │   │       └── Demo.jsx        #   Cinematic 28-scenario demo
 │   ├── vite.config.js          #   Dev server + API proxy
 │   └── package.json
@@ -328,6 +369,7 @@ logsentinel/
 │   ├── compliance.yaml         #   NIST/CIS/ISO framework controls (M2)
 │   ├── intel_reference.yaml    #   Bundled reputation feed (M2)
 │   ├── privacy_policy.yaml     #   Default REDACT policy
+│   ├── vendors.yaml            #   Vendor parser registry metadata (M4)
 │   ├── geoip/ranges.csv        #   Offline IP → geo subnet table (M2)
 │   └── attack_mapping.json     #   rule_id → MITRE ATT&CK technique mapping
 │
@@ -369,6 +411,16 @@ logsentinel/
 │   ├── test_compliance.py      #   Compliance audits (M2)
 │   ├── test_assets.py          #   Asset inventory (M2)
 │   ├── test_ml.py              #   ML anomaly scoring (M3)
+│   ├── test_vendor_parsers.py  #   Vendor parsers (M4)
+│   ├── test_parser_lab.py      #   Parser Lab API (M4)
+│   ├── test_template_miner.py  #   Template mining fallback (M4)
+│   ├── test_hashchain.py       #   Evidence hash chain (M4)
+│   ├── test_describe.py        #   Narrative generation
+│   ├── test_kgraph_opsec.py    #   Knowledge graph + OPSEC attribution
+│   ├── test_dedup_id.py        #   Entity-identity dedup
+│   ├── test_ai_llm.py          #   LLM bridge semantics (M4, optional AI)
+│   ├── test_ai_summary.py      #   Summary generation
+│   ├── test_ai_assistant.py    #   Assistant chat endpoint
 │   └── scripts/                #   Phase gate scripts (P1–P15)
 │
 ├── requirements.txt            # Python dependencies
@@ -426,11 +478,19 @@ All endpoints require JWT auth (via `Authorization: Bearer <token>`) except `/ap
 | `GET` | `/api/audit/report/{job}/{framework}` | Compliance Markdown report (M2) |
 | `GET` | `/api/assets` | Asset inventory (M2) |
 | `GET` | `/api/ml/{job_id}` | ML model meta + top anomalies (M3) |
+| `GET` | `/api/schema/fields` | UniversalEvent schema fields (M4) |
+| `GET` | `/api/schema/docs/{job_id}` | Per-job schema docs + ECS/OCSF field-mapping preview (M4) |
+| `POST` | `/api/parserlab/parse` | Parse a snippet against the real parser registry (M4) |
+| `GET` | `/api/integrity/{job_id}` | Verify chain-of-custody hash chain (M4) |
+| `GET` | `/api/knowledge/{job_id}` | GraphRAG-ready knowledge graph export |
+| `GET` | `/api/opsec/{job_id}` | OPSEC actor attribution + narratives |
+| `GET` | `/api/assistant/status` | Local-LLM availability (auto-on, deterministic when absent) |
+| `POST` | `/api/assistant` | Session chat over a dataset — grounded facts + disclaimer |
 | `GET` | `/api/events/{id}` | Single event detail |
 | `GET` | `/api/policy` | Current privacy policy |
 | `PUT` | `/api/policy` | Update privacy policy |
 | `POST` | `/api/policy/preview` | Preview redaction |
-| `GET` | `/api/export/{job}` | Export (format: json/csv/cef/leef/stix/syslog) |
+| `GET` | `/api/export/{job}` | Export (format: json/csv/cef/leef/stix/syslog/ecs/ocsf — 8 formats) |
 | `GET` | `/api/report/{job}` | PDF threat report |
 | `POST` | `/api/query` | Ask-the-Data natural language query |
 | `POST` | `/api/benchmark/run` | Run benchmark suite |
