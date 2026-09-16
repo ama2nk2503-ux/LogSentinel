@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      LOGSENTINEL_HOST: 0.0.0.0
+      LOGSENTINEL_PORT: "8000"
+      LOGSENTINEL_DB_PATH: /app/data/logsentinel.db
+      # Optional at-rest encryption (M5 Item 8): uncomment to enable.
+      # LOGSENTINEL_ENCRYPT_AT_REST: "1"
+      # LOGSENTINEL_DB_KEY: change-me-per-deployment
+    volumes:
+      - ./data:/app/data        # SQLite DB + uploads persist across compose up
+      - ./rules:/app/rules      # frameworks/playbooks editable without rebuild
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -31,8 +31,9 @@ export function AuthProvider({ children }) {
     const data = await res.json()
     localStorage.setItem('ls_token', data.access_token)
     setToken(data.access_token)
-    setUser({ username: data.username })
-    navigate('/')
+    setUser({ username: data.username, role: data.role })
+    // Read-only viewers land on a read surface instead of the analyst-only upload page.
+    navigate(data.role === 'viewer' ? '/dashboard' : '/')
   }
 
   const logout = () => {
@@ -47,6 +48,17 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   )
+}
+
+const ROLE_RANK = { viewer: 1, analyst: 2, admin: 3 }
+
+export function useRole() {
+  const { user } = useAuth()
+  return user?.role || 'viewer'
+}
+
+export function hasRole(needed, role) {
+  return (ROLE_RANK[role ?? 'viewer'] ?? 0) >= (ROLE_RANK[needed] ?? Infinity)
 }
 
 export function useAuth() {

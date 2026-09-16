@@ -18,10 +18,10 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_token(user_id: int, username: str) -> str:
+def create_token(user_id: int, username: str, role: str = "analyst") -> str:
     exp = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     return jwt.encode(
-        {"sub": str(user_id), "username": username, "exp": exp},
+        {"sub": str(user_id), "username": username, "role": role, "exp": exp},
         settings.jwt_secret,
         algorithm=settings.jwt_algorithm,
     )
@@ -45,19 +45,25 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(401, "Invalid or expired token")
     with db() as conn:
         row = conn.execute(
-            "SELECT id, username FROM users WHERE id = ?", (int(payload["sub"]),)
+            "SELECT id, username, role FROM users WHERE id = ?", (int(payload["sub"]),)
         ).fetchone()
     if row is None:
         raise HTTPException(401, "User not found")
-    return {"id": row["id"], "username": row["username"]}
+    return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
 
 def seed_admin() -> None:
     """Insert default admin user if users table is empty."""
     with db() as conn:
-        count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        if count == 0:
+        row = conn.execute(
+            "SELECT id FROM users WHERE username = ?", ("admin",)
+        ).fetchone()
+        if row is None:
             conn.execute(
-                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                ("admin", hash_password(settings.default_admin_password)),
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                ("admin", hash_password(settings.default_admin_password), "admin"),
+            )
+        else:
+            conn.execute(
+                "UPDATE users SET role = 'admin' WHERE username = 'admin'"
             )

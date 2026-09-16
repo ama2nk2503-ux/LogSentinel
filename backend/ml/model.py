@@ -40,7 +40,13 @@ def _load_rows(job_id: str, limit: int | None = None) -> list[tuple[int, dict]]:
         params.append(limit)
     with db() as conn:
         rows = list(conn.execute(sql, params))
-    return [(int(r[0]), dict(r)) for r in rows]
+    from core.crypto import decrypt_text
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["message"] = decrypt_text(d.get("message"))
+        out.append((int(r[0]), d))
+    return out
 
 
 def _encode_cats(rows: dict):
@@ -50,6 +56,39 @@ def _encode_cats(rows: dict):
         le = LabelEncoder().fit(values)
         cat_map[col] = dict(zip(le.classes_.tolist(), le.transform(le.classes_).tolist()))
     return cat_map
+
+
+def _per_feature_stats(rows: list[dict], X: list[list[float]],
+                       raw: list[dict]) -> tuple[dict, dict]:
+    """Mean/std per feature over the training matrix + modal raw values.
+
+    Computed from the SAME matrix the IsolationForest was fit on, so
+    explanations (ml.explain) are consistent with the trained model.
+    """
+    n = len(X)
+    dim = len(FEATURE_NAMES)
+    sums = [0.0] * dim
+    sumsq = [0.0] * dim
+    for x in X:
+        for i in range(dim):
+            sums[i] += x[i]
+            sumsq[i] += x[i] * x[i]
+    stats, typical = {}, {}
+    for i, name in enumerate(FEATURE_NAMES):
+        mean = sums[i] / n if n else 0.0
+        var = max(0.0, sumsq[i] / n - mean * mean)
+        stats[name] = {"mean": round(mean, 4), "std": round(var ** 0.5, 4)}
+    # Modal raw values for display ("typical 80" for dst_port, etc.).
+    from collections import Counter
+    for name in ("src_port", "dst_port"):
+        vals = [r.get(name) for r in raw if r.get(name) not in (None, "", -1)]
+        if vals:
+            typical[name] = Counter(vals).most_common(1)[0][0]
+    for col in CAT_COLUMNS:
+        vals = [r.get(col, "") or "" for r in raw]
+        if vals:
+            typical[col] = Counter(vals).most_common(1)[0][0]
+    return stats, typical
 
 
 def train_job(job_id: str) -> dict:
@@ -65,6 +104,8 @@ def train_job(job_id: str) -> dict:
 
     cat_map = _encode_cats(rows)
     X = [extract_features(r, cat_map) for _, r in rows]
+    feature_stats, feature_typical = _per_feature_stats(rows, X,
+                                                        [r for _, r in rows])
     model = IsolationForest(
         n_estimators=N_ESTIMATORS, contamination=CONTAMINATION,
         random_state=42, n_jobs=1,
@@ -87,11 +128,14 @@ def train_job(job_id: str) -> dict:
                 (s, flag, event_id),
             )
     stats.update(trained=True, n_anomalies=sum(anomalous),
-                 min_s=lo, max_s=hi)
+                 min_s=lo, max_s=hi,
+                 feature_stats=feature_stats, feature_typical=feature_typical)
     _persist(job_id, stats)
     with _lock:
         _cache[job_id] = {"model": model, "cat_map": cat_map,
-                          "lo": lo, "hi": hi, "n_events": len(rows)}
+                          "lo": lo, "hi": hi, "n_events": len(rows),
+                          "feature_stats": feature_stats,
+                          "feature_typical": feature_typical}
     return stats
 
 
@@ -151,7 +195,9 @@ def bump(evidence: list[dict], job_id: str) -> tuple[int, str]:
 
     Returns (points, reason). Escalation is driven by the peak anomaly score
     of the evidence events (a single shock event is the classic anomaly
-    signal); a reason line keeps the escalation explainable.
+    signal); a reason line keeps the escalation explainable. The summary line
+    is never replaced — a per-feature detail (ml.explain) is APPENDED so the
+    story stays expandable without changing the existing sentence.
     """
     ids = [str(e.get("event_id")) for e in evidence if e.get("event_id")]
     if not ids:
@@ -159,22 +205,40 @@ def bump(evidence: list[dict], job_id: str) -> tuple[int, str]:
     ph = ",".join("?" * len(ids))
     with db() as conn:
         rows = conn.execute(
-            f"SELECT anomaly_score, anomalous FROM events"
+            f"SELECT id, event_id, ts, event_type, status, protocol,"
+            f" src_port, dst_port, severity, risk_score, message,"
+            f" iocs_json, pii_json, extras_json,"
+            f" anomaly_score, anomalous FROM events"
             f" WHERE job_id = ? AND event_id IN ({ph})",
             (job_id, *ids),
         ).fetchall()
     if not rows:
         return 0, ""
+    from core.crypto import decrypt_text
+    rows = [dict(r) for r in rows]
+    for r in rows:
+        r["message"] = decrypt_text(r.get("message"))
     scores = [r["anomaly_score"] or 0 for r in rows]
     flagged = sum(1 for r in rows if r["anomalous"])
     peak = max(scores)
     if flagged < 1 or peak < (THRESHOLD - 0.15):
         return 0, ""
     pts = min(30, int(round(20 * peak)))
-    if pts:
-        return pts, (f"+{pts} ML anomaly signal ({flagged}/{len(rows)} evidence "
-                     f"events anomalous, peak score {peak:.2f})")
-    return 0, ""
+    if not pts:
+        return 0, ""
+    reason = (f"+{pts} ML anomaly signal ({flagged}/{len(rows)} evidence "
+              f"events anomalous, peak score {peak:.2f})")
+    # M5 Item 7: expandable top-feature breakdown for the peak anomalous
+    # event (deterministic pick: highest score, then lowest event id).
+    peak_rows = [r for r in rows if r["anomalous"]
+                 and float(r["anomaly_score"] or 0) == peak]
+    if peak_rows:
+        peak_rows.sort(key=lambda r: int(r["id"]))
+        from ml import explain as ml_explain
+        detail = ml_explain.summary(job_id, dict(peak_rows[0]))
+        if detail:
+            reason += detail
+    return pts, reason
 
 
 def job_stats(job_id: str) -> dict:

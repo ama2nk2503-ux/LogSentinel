@@ -6,9 +6,10 @@ so intent-driven event retrieval stays implementation-identical everywhere.
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from core.rbac import require_role
 from core.storage import db
 from detection.intent import parse_intent
 from privacy.policy_engine import load_policy
@@ -93,8 +94,10 @@ def query_events(job_id: str, filters: dict, limit: int = 25) -> dict:
 
     policy = dict(load_policy())
     events = []
+    from core.crypto import decrypt_text
     for r in rows:
         d = dict(r)
+        d["message"] = decrypt_text(d.get("message"))
         d["message"], _ = apply_policy(d.get("message") or "", policy)
         events.append(d)
 
@@ -107,7 +110,7 @@ def query_events(job_id: str, filters: dict, limit: int = 25) -> dict:
 
 
 @router.post("/query")
-def ask_the_data(body: QueryBody):
+def ask_the_data(body: QueryBody, _: dict = Depends(require_role("analyst"))):
     if not _job_exists(body.job_id):
         raise HTTPException(404, "Job not found")
     parsed = parse_intent(body.text)

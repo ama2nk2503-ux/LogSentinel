@@ -13,7 +13,8 @@ from tests.test_detection import insert_event
 @pytest.fixture(scope="module", autouse=True)
 def frameworks_present():
     names = {f["name"] for f in compliance.list_frameworks()}
-    assert names >= {"NIST SP 800-53", "ISO 27001:2022", "PCI-DSS v4.0", "CIS Controls v8"}
+    assert names >= {"NIST SP 800-53", "ISO 27001:2022", "PCI-DSS v4.0", "CIS Controls v8",
+                     "CERT-In (India)"}
     return True
 
 
@@ -27,7 +28,7 @@ def test_benign_job_passes_monitoring_controls():
         insert_event(job, ts=f"2026-08-25T15:0{i}:00Z", event_type="http_request",
                      src_ip="198.51.100.10", message=f"GET /index.html {i}")
     results = _audit(job)
-    assert len(results) == 4
+    assert len(results) == 5
     by = {r["framework"]: {f["control"]: f["status"] for f in r["findings"]} for r in results}
     # Monitoring / hygiene controls must stay green on benign traffic.
     assert by["NIST SP 800-53"]["SI-4"] == "PASS"
@@ -75,9 +76,9 @@ def test_noncompliant_job_flags_failures():
 def test_audit_history_and_upsert():
     _audit("c_clean")
     rows = compliance.audit_history("c_clean")
-    assert len(rows) == 4
+    assert len(rows) == 5
     sts = {r["framework"] for r in rows}
-    assert len(sts) == 4
+    assert len(sts) == 5
     first = rows[0]
     assert "passed" in first["summary"]
     assert first["findings"]

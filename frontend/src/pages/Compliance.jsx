@@ -11,6 +11,7 @@ const STATUS_COLOR = { PASS: '#22c55e', WARN: '#eab308', FAIL: '#ef4444' }
 export default function Compliance() {
     const [jobId, setJobId] = useState('')
     const [openReport, setOpenReport] = useState(null)
+    const [filter, setFilter] = useState('ALL')
 
     const { data } = useQuery({
         queryKey: ['audit', jobId],
@@ -41,6 +42,21 @@ export default function Compliance() {
 
             {data && (
                 <>
+                    <div className="flex flex-wrap gap-2 mb-6 border border-slate-800/80 rounded-lg p-2 bg-slate-950/40" role="tablist" aria-label="Compliance frameworks">
+                        {['ALL', ...data.frameworks.map((f) => f.framework)].map((name) => (
+                            <button key={name} role="tab" aria-selected={filter === name}
+                                    onClick={() => setFilter(name)}
+                                    className={filter === name
+                                        ? 'px-3 py-1.5 text-[11px] tracking-widest bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 rounded'
+                                        : 'px-3 py-1.5 text-[11px] tracking-widest text-slate-500 hover:text-slate-300 border border-transparent rounded'}>
+                                {name}
+                            </button>
+                        ))}
+                        <span className="ml-auto self-center text-[10px] text-slate-600 pr-1">
+                            {data.frameworks.length} FRAMEWORKS
+                        </span>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-3 mb-6 max-w-[420px]">
                         {[['PASSED', data.summary.passed, '#22c55e'],
                           ['WARNED', data.summary.warned, '#eab308'],
@@ -53,7 +69,7 @@ export default function Compliance() {
                     </div>
 
                     <div className="space-y-4">
-                        {data.frameworks.map((fw) => (
+                        {data.frameworks.filter((fw) => filter === 'ALL' || fw.framework === filter).map((fw) => (
                             <div key={fw.framework} className="border border-slate-800 rounded bg-slate-900/40">
                                 <div className="px-4 py-3 flex items-center justify-between flex-wrap gap-2">
                                     <div>

@@ -1,0 +1,75 @@
+# CERT-In / India compliance framework (M5 Item 4) — interpretive mapping.
+#
+# Controls are modeled on the publicly known THEMES of the CERT-In
+# Cybersecurity Directions 2022 (e.g. mandatory logging of ICT systems and
+# services, compulsory reporting of certain cyber incidents within mandated
+# timelines, and retention / time-sync expectations for service providers).
+#
+# IMPORTANT — REVIEW BEFORE A REAL SUBMISSION:
+#   * Control IDs (CERT-LOG-01 …), severities and the metric proxy mapping
+#     below are an INTERPRETIVE bridging to the themes and are NOT quoted as
+#     clause numbers, legal text or statutory obligations.
+#   * Several themes (e.g. on-disk log retention >= 180 days, NTP policy on
+#     endpoints) cannot be fully proven from a single analysed dataset, so a
+#     control either records an evidence proxy here or is surfaced as a WARN
+#     that the operator must close out against the actual infrastructure.
+#   * Only the exact same metrics used by the other four frameworks are used
+#     (event_count / detection_count / incident_count / untriaged_incidents /
+#     pii_count / risk_surface) — no new evaluation code path.
+
+frameworks:
+  - name: "CERT-In (India)"
+    description: "Controls on CERT-In Cybersecurity Directions 2022 themes (mandatory logging, incident reporting timelines, retention, time sync) bridged through observable log evidence."
+    controls:
+      - id: "CERT-LOG-01"
+        title: "Mandatory Logging of ICT Systems and Services"
+        description: "Service providers must maintain logs of ICT systems and services."
+        severity: high
+        metric: "event_count"
+        operator: "ge"
+        value: 1
+        note: "Parsed events prove ICT systems are producing machine-readable audit logs."
+      - id: "CERT-LOG-02"
+        title: "Log Review and Monitoring"
+        description: "Logs are reviewed to detect and act on suspicious activity."
+        severity: high
+        metric: "incident_count"
+        operator: "le"
+        value: 3
+        note: "Correlated incidents on a dataset must stay reviewable; a burst indicates unmonitored activity."
+      - id: "CERT-NTP-01"
+        title: "Time Synchronization (NTP)"
+        description: "Event timestamps should originate from synchronized clocks so timelines are reliable."
+        severity: medium
+        metric: "event_count"
+        filters:
+          timestamp_source: "event"
+        operator: "ge"
+        value: 1
+        note: "Interpretive proxy: events carrying native timestamps (timestamp_source=event). Confirm NTP policy on endpoints separately."
+      - id: "CERT-RET-01"
+        title: "Log Retention (180-day theme)"
+        description: "Logs must be retained for a mandated horizon (publicly referenced >= 180 days) and be analyzable."
+        severity: high
+        metric: "event_count"
+        operator: "ge"
+        value: 1
+        note: "Interpretive proxy: an audit trail is present over the analysed window. Actual on-disk retention duration must be confirmed against storage policy; not provable from one dataset."
+      - id: "CERT-RPT-01"
+        title: "Incident Reporting Timelines"
+        description: "Cyber incidents must be reported to CERT-In within mandated timelines."
+        severity: high
+        metric: "untriaged_incidents"
+        operator: "le"
+        value: 0
+        note: "Incidents still NEW without analyst triage represent reporting lag and fail this control."
+      - id: "CERT-HYG-01"
+        title: "Credential-Safety Hygiene"
+        description: "Avoid concentrated authentication failures that indicate compromised credential handling."
+        severity: medium
+        metric: "event_count"
+        filters:
+          event_type: "auth_failure"
+        operator: "le"
+        value: 5
+        note: "Concentrated failed authentications are an un-sanitized weak point for credential-based incidents."

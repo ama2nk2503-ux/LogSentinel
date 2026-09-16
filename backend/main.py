@@ -28,6 +28,7 @@ from api.routes_ml import router as ml_router
 from api.routes_parserlab import router as parserlab_router
 from api.routes_schema import router as schema_router
 from api.routes_assistant import router as assistant_router
+from api.routes_baseline import router as baseline_router
 from ai import llm as ai_llm
 from core.auth import decode_token, seed_admin
 from core.alerts import seed_alert_rules
@@ -88,6 +89,7 @@ app.include_router(parserlab_router, prefix="/api")
 app.include_router(knowledge_router, prefix="/api")
 app.include_router(opsec_router, prefix="/api")
 app.include_router(assistant_router, prefix="/api")
+app.include_router(baseline_router, prefix="/api")
 
 
 @app.on_event("startup")

@@ -1,0 +1,14 @@
+.venv
+node_modules
+data
+frontend/e2e
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+tests
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.git
+.gitignore

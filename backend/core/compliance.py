@@ -15,15 +15,23 @@ from core.storage import db
 
 COMPLIANCE_FILE = "compliance.yaml"
 
+# M5 item 4: 5th framework lives in its own YAML so the main file stays
+# reviewable against the original four; same evaluation code path.
+COMPLIANCE_CERTIN_FILE = "compliance_certin.yaml"
+
 SEVERITY_WEIGHT = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 
 
 def _load() -> dict:
-    path = settings.rules_dir / COMPLIANCE_FILE
-    if not path.exists():
-        return {"frameworks": []}
-    with open(path, "r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh) or {}
+    base = settings.rules_dir / COMPLIANCE_FILE
+    certin = settings.rules_dir / COMPLIANCE_CERTIN_FILE
+    data: dict = {"frameworks": []}
+    for path in (base, certin):
+        if not path.exists():
+            continue
+        with open(path, "r", encoding="utf-8") as fh:
+            merged = yaml.safe_load(fh) or {}
+        data["frameworks"].extend(merged.get("frameworks", []))
     return data
 
 

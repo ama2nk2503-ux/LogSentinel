@@ -5,6 +5,8 @@ hardcoded; everything is computed from these labeled fixtures at run time.
 """
 
 import json
+import sqlite3
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -26,6 +28,9 @@ from privacy.redactor import apply_policy
 
 LABELED = settings.rules_dir.parent / "samples" / "labeled"
 PERF_LINES = 50_000
+# Item 6: how many synthetic rows the search-latency probe is measured against.
+SEARCH_N = 100_000
+_SEARCH_NEEDLE = "needle-b7c9a1f3"
 
 
 def _prf(tp: int, fp: int, fn: int) -> dict:
@@ -196,6 +201,57 @@ def benchmark_performance() -> dict:
     }
 
 
+def benchmark_search_latency() -> dict:
+    """Search latency at SEARCH_N events — FTS5 MATCH when available, LIKE else.
+
+    Runs against a throwaway SQLite file so the shared dataset is untouched;
+    the needle is planted at a known density so 'matched_rows' is checkable.
+    """
+    needle = _SEARCH_NEEDLE
+    with tempfile.TemporaryDirectory() as td:
+        conn = sqlite3.connect(Path(td) / "fts_bench.db")
+        conn.execute("CREATE TABLE evt (id INTEGER PRIMARY KEY, message TEXT)")
+        conn.execute("CREATE INDEX ix_evt_id ON evt(id)")
+        fts = False
+        try:
+            conn.execute("CREATE VIRTUAL TABLE evt_fts USING fts5(message, tokenize='unicode61')")
+            fts = True
+        except sqlite3.OperationalError:
+            pass
+        rows = [
+            (i, f"GET /asset/{i}.html probe "
+             f"{needle if i % 100 == 0 else 'noop'} 404")
+            for i in range(SEARCH_N)
+        ]
+        conn.executemany("INSERT INTO evt (id, message) VALUES (?, ?)", rows)
+        if fts:
+            conn.execute("INSERT INTO evt_fts(rowid, message) SELECT id, message FROM evt")
+        conn.commit()
+        expected = SEARCH_N // 100
+
+        def run(query, params):
+            t0 = time.perf_counter()
+            n = conn.execute(query, params).fetchone()[0]
+            return time.perf_counter() - t0, n
+
+        best, matched = run("SELECT COUNT(*) FROM evt WHERE message LIKE ?",
+                            [f"%{needle}%"])
+        for _ in range(2):
+            if fts:
+                t, _ = run("SELECT COUNT(*) FROM evt_fts WHERE evt_fts MATCH ?",
+                           [f'"{needle}"'])
+                best = min(best, t)
+        conn.close()
+
+    return {
+        "events_indexed": SEARCH_N,
+        "engine": "fts5" if fts else "like",
+        "needle_hits": expected,
+        "matched_rows": matched,
+        "match_seconds": round(best, 4),
+    }
+
+
 def run_benchmark() -> dict:
     results = {
         "run_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -204,6 +260,7 @@ def run_benchmark() -> dict:
         "pii_detection": benchmark_pii(),
         "redaction": benchmark_redaction(),
         "performance": benchmark_performance(),
+        "search": benchmark_search_latency(),
     }
     with db() as conn:
         conn.execute("INSERT INTO benchmarks (results_json) VALUES (?)",

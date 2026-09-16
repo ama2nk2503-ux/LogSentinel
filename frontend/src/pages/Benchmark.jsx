@@ -148,6 +148,14 @@ export default function Benchmark() {
             </Section>
           )}
 
+          {r.search && (
+            <Section title={`SEARCH LATENCY @ ${(r.search.events_indexed ?? 0).toLocaleString()} EVENTS`}>
+              <KV k="Engine" v={r.search.engine === 'fts5' ? 'SQLite FTS5 (MATCH)' : 'LIKE fallback'} />
+              <KV k="Needle hits" v={`${r.search.matched_rows ?? 0} / ${r.search.needle_hits ?? 0}`} />
+              <KV k="Match latency" v={<b className="text-emerald-400 glow-text">{((r.search.match_seconds ?? 0) * 1000).toFixed(1)} ms</b>} />
+            </Section>
+          )}
+
           {r.performance && (
             <Section title="PERFORMANCE (measured)">
               <KV k="Lines processed" v={(r.performance.lines_processed ?? 0).toLocaleString()} />

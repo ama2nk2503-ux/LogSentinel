@@ -32,3 +32,9 @@ graphify-out/
 # Dev error artifacts (runtime stderr logs)
 backend/uvicorn.log.err
 frontend/vite.log.err
+
+# Local junk produced during agent runs / testing (keep out of the repo)
+test-results/
+.ua/
+logsentinel_milestone5_agent_prompt.md
+freebuff-chat-*.md

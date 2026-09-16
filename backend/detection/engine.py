@@ -154,6 +154,13 @@ def _collect_groups(rule: dict, job_id: str) -> dict[str, list[dict]]:
             params,
         ).fetchall()
 
+    # M5 Item 8: message is stored encrypted when at-rest protection is on;
+    # decrypt before regex matching / excerpting (a no-op when disabled).
+    from core.crypto import decrypt_text
+    rows = [dict(r) for r in rows]
+    for r in rows:
+        r["message"] = decrypt_text(r.get("message"))
+
     if rule["regex"] is not None:
         rows = [r for r in rows if rule["regex"].search(r["message"] or "")]
 

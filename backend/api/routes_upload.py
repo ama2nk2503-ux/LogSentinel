@@ -1,12 +1,13 @@
 """Upload & paste endpoints with strict validation."""
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from core import jobs
 from core.config import settings
 from core.ingest import ValidationError, save_stream, validate_extension
 from core.pipeline import run_job
+from core.rbac import require_role
 
 router = APIRouter()
 
@@ -18,7 +19,8 @@ def _launch(job_id: str, bg: BackgroundTasks) -> dict:
 
 
 @router.post("/upload")
-async def upload(files: list[UploadFile] = File(...), bg: BackgroundTasks = None):
+async def upload(files: list[UploadFile] = File(...), bg: BackgroundTasks = None,
+                 _: dict = Depends(require_role("analyst"))):
     if not files or len(files) > 20:
         raise HTTPException(400, "Provide 1-20 files")
     created = []
@@ -55,7 +57,8 @@ class PasteBody(BaseModel):
 
 
 @router.post("/paste")
-def paste(body: PasteBody, bg: BackgroundTasks):
+def paste(body: PasteBody, bg: BackgroundTasks,
+          _: dict = Depends(require_role("analyst"))):
     job_id = jobs.create_job(body.name, 0, source_type="paste")
     payload = body.text.encode("utf-8", errors="replace")
     try:

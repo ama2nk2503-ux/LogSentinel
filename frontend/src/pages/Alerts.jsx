@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
 import { api, classNames } from '../lib/api.js'
+import { hasRole, useRole } from '../lib/AuthContext.jsx'
 
 const STATUS_TABS = ['ALL', 'OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'FALSE_POSITIVE']
 
@@ -26,6 +27,9 @@ export default function Alerts() {
   const [severity, setSeverity] = useState('')
   const [notifyMsg, setNotifyMsg] = useState({})
   const [showRules, setShowRules] = useState(false)
+  const role = useRole()
+  const canMutate = hasRole('analyst', role)
+  const isAdmin = hasRole('admin', role)
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['alerts'] })
@@ -88,7 +92,9 @@ export default function Alerts() {
         </select>
         <button onClick={() => setShowRules((v) => !v)}
                 aria-expanded={showRules}
-                className="btn btn-ghost px-3 py-1.5 text-xs">
+                disabled={!isAdmin}
+                title={isAdmin ? undefined : 'requires admin'}
+                className="btn btn-ghost px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40">
           {showRules ? 'HIDE' : 'MANAGE'} RULES
         </button>
       </div>
@@ -131,19 +137,24 @@ export default function Alerts() {
               </div>
               <div className="p-4 flex flex-wrap items-center gap-2 md:justify-end border-t md:border-t-0 md:border-l border-slate-800/60">
                 {a.status === 'OPEN' && (
-                  <button onClick={() => ack.mutate(a.id)} disabled={actBusy(ack, a.id)}
-                          className="btn btn-ghost px-3 py-1.5 text-[11px]">ACK</button>
+                  <button onClick={() => ack.mutate(a.id)}
+                          disabled={!canMutate || actBusy(ack, a.id)}
+                          title={canMutate ? undefined : 'requires analyst or above'}
+                          className="btn btn-ghost px-3 py-1.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-40">ACK</button>
                 )}
                 {a.status !== 'RESOLVED' && a.status !== 'FALSE_POSITIVE' && (
                   <>
-                    <button onClick={() => resolve.mutate(a.id)} disabled={actBusy(resolve, a.id)}
-                            className="btn btn-ghost px-3 py-1.5 text-[11px]">RESOLVE</button>
-                    <button onClick={() => fp.mutate(a.id)} disabled={actBusy(fp, a.id)}
-                            className="btn btn-danger px-3 py-1.5 text-[11px]">FALSE POSITIVE</button>
+                    <button onClick={() => resolve.mutate(a.id)} disabled={!canMutate || actBusy(resolve, a.id)}
+                            title={canMutate ? undefined : 'requires analyst or above'}
+                            className="btn btn-ghost px-3 py-1.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-40">RESOLVE</button>
+                    <button onClick={() => fp.mutate(a.id)} disabled={!canMutate || actBusy(fp, a.id)}
+                            title={canMutate ? undefined : 'requires analyst or above'}
+                            className="btn btn-danger px-3 py-1.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-40">FALSE POSITIVE</button>
                   </>
                 )}
-                <button onClick={() => notify.mutate(a.id)} disabled={notify.isPending}
-                        className="btn btn-ghost px-3 py-1.5 text-[11px]" title="Deliver to configured channels">
+                <button onClick={() => notify.mutate(a.id)} disabled={!canMutate || notify.isPending}
+                        title={canMutate ? 'Deliver to configured channels' : 'requires analyst or above'}
+                        className="btn btn-ghost px-3 py-1.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-40">
                   NOTIFY
                 </button>
               </div>

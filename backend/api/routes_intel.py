@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from core import intel
+from core.rbac import require_role
 from core.storage import db
 from intelligence.aggregator import build_intel
 
@@ -20,7 +21,7 @@ def intel_reference():
 
 
 @router.post("/intel/reference/reload")
-def reload_reference():
+def reload_reference(_: dict = Depends(require_role("analyst"))):
     count = intel.reload_intel_reference()
     return {"reloaded": True, "count": count}
 

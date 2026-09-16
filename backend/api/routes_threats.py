@@ -1,9 +1,11 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core import triage
+from core import response as soar
+from core.rbac import require_role
 from core.storage import db
 from core.timeline import build_timeline
 from privacy.policy_engine import load_policy
@@ -60,6 +62,9 @@ def job_threats(job_id: str):
             (job_id,)).fetchall()
     policy = dict(load_policy())
     incidents = [sanitize_event(_row_to_incident(r), policy) for r in inc_rows]
+    # M5 item 3: recommended & simulated response actions (playbook lookup).
+    for inc in incidents:
+        inc["recommended_actions"] = soar.recommended_actions(inc.get("category") or "")
     # Workstream B: plain-language "what was found" narrative per incident,
     # generated deterministically from the incident's own computed evidence.
     try:
@@ -89,7 +94,8 @@ def job_threats(job_id: str):
 
 
 @router.post("/threats/{incident_id}/status")
-def incident_status(incident_id: int, body: StatusBody):
+def incident_status(incident_id: int, body: StatusBody,
+                    _: dict = Depends(require_role("analyst"))):
     try:
         updated = triage.set_status(incident_id, body.status)
     except ValueError as exc:
@@ -100,7 +106,8 @@ def incident_status(incident_id: int, body: StatusBody):
 
 
 @router.post("/threats/{incident_id}/note")
-def incident_note(incident_id: int, body: NoteBody):
+def incident_note(incident_id: int, body: NoteBody,
+                  _: dict = Depends(require_role("analyst"))):
     try:
         updated = triage.add_note(incident_id, body.note)
     except ValueError as exc:
@@ -111,7 +118,8 @@ def incident_note(incident_id: int, body: NoteBody):
 
 
 @router.post("/threats/{incident_id}/assign")
-def incident_assign(incident_id: int, body: AssignBody):
+def incident_assign(incident_id: int, body: AssignBody,
+                    _: dict = Depends(require_role("analyst"))):
     updated = triage.assign(incident_id, body.assignee)
     if updated is None:
         raise HTTPException(404, "Incident not found")
@@ -124,3 +132,20 @@ def incident_timeline(incident_id: int):
     if timeline is None:
         raise HTTPException(404, "Incident not found")
     return timeline
+
+
+@router.get("/incidents/{incident_id}/actions")
+def incident_actions(incident_id: int):
+    """Simulated-action history. Read-only; simulation itself is analyst+."""
+    return {"incident_id": incident_id, "actions": soar.list_actions(incident_id)}
+
+
+@router.post("/incidents/{incident_id}/actions/{action_id}/simulate")
+def simulate_incident_action(incident_id: int, action_id: str,
+                             user: dict = Depends(require_role("analyst"))):
+    """Record a labelled SIMULATED response. No network/system side effect."""
+    try:
+        rec = soar.simulate_action(incident_id, action_id, user["username"])
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return rec

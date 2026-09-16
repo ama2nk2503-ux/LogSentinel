@@ -38,6 +38,8 @@ def fetch_events(job_id: str) -> list[dict]:
         d["iocs"] = json.loads(d.pop("iocs_json") or "[]")
         d.pop("pii_json", None)
         d["pii_detected"] = json.loads(d.get("pii_json", "[]")) if "pii_json" in d else []
+        from core.crypto import decrypt_text
+        d["message"] = decrypt_text(d.get("message"))
         msg, cats = apply_policy(d.get("message") or "", policy)
         d["message"], d["pii_detected"] = msg, sorted(set(d.get("pii_detected") or []) | set(cats))
         out.append(d)

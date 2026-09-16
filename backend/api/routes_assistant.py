@@ -8,11 +8,12 @@ never raises or blocks when the LLM is absent.
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ai import llm as ai_llm
 from ai.assistant import assistant_status, assist
+from core.rbac import require_role
 
 router = APIRouter()
 
@@ -38,14 +39,14 @@ class ModeBody(BaseModel):
 
 
 @router.patch("/assistant/mode")
-def set_mode(body: ModeBody):
+def set_mode(body: ModeBody, _: dict = Depends(require_role("analyst"))):
     """Persist the UI toggle (on = LLM attempt, off = deterministic only)."""
     ai_llm.set_persisted_ai_mode(body.mode)
     return assistant_status()
 
 
 @router.post("/assistant")
-def chat(body: ChatBody):
+def chat(body: ChatBody, _: dict = Depends(require_role("analyst"))):
     result = assist(
         body.job_id,
         body.question,

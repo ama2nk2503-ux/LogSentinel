@@ -22,6 +22,7 @@ export default function Explorer() {
   const [page, setPage] = useQueryParam('page', '1')
   const [selected, setSelected] = useState(null)
   const [detail, setDetail] = useState(null)
+  const [mlHover, setMlHover] = useState(null)
   const lastFocused = useRef(null)
 
   const debouncedQ = useDebouncedValue(q)
@@ -117,12 +118,33 @@ export default function Explorer() {
                     <td className="px-3 py-1.5 font-bold text-slate-200">{e.risk_score || ''}</td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       {e.anomaly_score > 0.05 && (
-                        <span className={classNames(
-                          'px-1.5 py-0.5 rounded text-[10px] font-bold',
-                          e.anomalous ? 'bg-red-500/15 text-red-400' : 'text-slate-500',
-                        )}>
-                          {e.anomalous ? '★ ' : ''}{e.anomaly_score.toFixed(2)}
-                        </span>
+                        <div className="relative inline-block"
+                             onMouseEnter={() => setMlHover(e.anomalous ? { id: e.id, score: e.anomaly_score, details: e.ml_details || [] } : null)}
+                             onMouseLeave={() => setMlHover(null)}>
+                          <span className={classNames(
+                            'px-1.5 py-0.5 rounded text-[10px] font-bold',
+                            e.anomalous ? 'bg-red-500/15 text-red-400' : 'text-slate-500',
+                          )}>
+                            {e.anomalous ? '★ ' : ''}{e.anomaly_score.toFixed(2)}
+                          </span>
+                          {mlHover?.id === e.id && (
+                            <div className="absolute left-0 top-full mt-1 z-30 w-72 rounded bg-slate-900 border border-red-900/60 p-3 shadow-xl"
+                                 role="tooltip">
+                              <div className="text-[10px] tracking-widest text-red-400 mb-1.5">
+                                ML ANOMALY • score {mlHover.score.toFixed(3)}
+                              </div>
+                              {mlHover.details.length > 0 ? (
+                                <ul className="space-y-1">
+                                  {mlHover.details.map((d, i) => (
+                                    <li key={i} className="text-[11px] text-slate-300 leading-snug">{d}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="text-[11px] text-slate-500">No per-feature stats trained for this job.</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>

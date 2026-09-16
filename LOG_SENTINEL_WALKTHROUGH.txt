@@ -791,6 +791,91 @@ corpus enrichment): 317 backend tests, incl. test_demo_samples.py (28-scenario
 integrity + severity_hint/IOC/remediation/record-count assertions); 41 e2e =
 18 page-render + 23 functional flows, axe-scanned on every page.
 
+================================================================================
+9f. MILESTONE 5 — ACCESS CONTROL, CONTAINERIZATION, SEARCH, EXPLAINABILITY,
+    AT-REST ENCRYPTION
+================================================================================
+
+Eight additive increments ("M5"), each shipped with its own tests. The
+freeze-phase rule (ml/features.py, normalization/, core/baseline.py untouched)
+held for the whole milestone; everything below rides on additive columns,
+env-gated optional modules, and read/derived surfaces so flag-off behavior is
+byte-for-byte identical.
+
+  1. ROLE-BASED ACCESS CONTROL (core/rbac.py + /users page + gating)
+     Three tiers — admin (everything), analyst (investigate/triage/simulate),
+     viewer (read-only). Backend: require_role() dependency on every route
+     that mutates or exposes admin surfaces; core/auth re-reads the role from
+     the DB by sub, so token claims can never elevate a user. Frontend:
+     /users page renders roles read-only unless admin; edit controls and
+     admin/lab surfaces are blocked for lower tiers (e2e-verified).
+     Tests: test_rbac runtime matrix.
+
+  2. BASELINE ENVIRONMENT SUPPORT (LOGSENTINEL_EVALUATION_MODE / _AIR_GAPPED /
+     _OFFLINE)
+     The pack ships evaluation-ready: defaulting to evalsemantic mode and
+     flexing to air-gapped when network is judged absent, with offline=true
+     for scenarios/LLM options. Additive env knobs, no behavior change when
+     unset. Tests: test_baseline_envs + scenario offline assertions.
+
+  3. DETERMINISTIC SOAR-LITE PLAYBOOK (core/soar.py + /incidents actions)
+     Markovian decision chain: load_playbook() reads incidents.yaml once into
+     a deterministic cache, PEAK_TRIAGE picks the top triage map, and
+     simulate_action() records JSON evidence + a +reason into actions_log —
+     provably DB-only (no sockets, no file I/O; guarded by a dedicated test
+     that runs the handler under a socket/open deny). Routes: POST
+     /incidents/{id}/actions/{action}/simulate. Route history + analyst gate
+     covered by test_response (fixtures create real per-tier DB users).
+
+  4. CERT-IN (INDIA) COMPLIANCE FRAMEWORK (core/compliance — 5th framework)
+     Controls on native post-Item-4 evidence: mandatory logging, NTP-time vs
+     ingest-time slack, audit-retention window, credential-hygiene (concentrated
+     auth failures) and reporting-timeline (untriaged incidents break the
+     cadence). Registered as the fifth audit framework with the same
+     severity->status mechanism. Tests: test_compliance_certin (8-failure
+     scenario trips CERT-HYG-01 FAIL + CERT-RPT-01 FAIL; clean job passes).
+
+  5. DOCKER + CI (Dockerfile, docker-compose.yml, .github/workflows/)
+     Backend serves in a slim container seeded via the standard migration +
+     seed_admin path, compose wires the frontend build next to it, and the
+     CI workflow pipes the root venv through pip install -r requirements.txt
+     then runs the backend test suite on push/PR.
+
+  6. FULL-TEXT SEARCH (core/fts.py + /explorer query)
+     FTS5 virtual table over events (message + raw), token-flagged rebuilds,
+     ranking ordering, and pagination semantics identical to LIKE fallback —
+     a parity test proves FTS5 and LIKE return the same result set. Purely
+     additive: with LOGSENTINEL_ENCRYPT_AT_REST on, FTS is disabled and
+     search falls back to LIKE over decrypted text. Tests: test_fts.
+
+  7. ML EXPLAINABILITY (ml/explain.py + Explorer ML-detail hover)
+     Per-feature mean/std/typical stats persisted per trained job; the top-3
+     |z| features with deterministic tie-breaks render human phrases ("dst_port
+     : 6666 ≈ 3.42σ from job mean") on the anomaly row + appended as
+     "| ML detail:" by bump() after the original summary (never replaced).
+     Explorer shows the detail in a hover popover under the anomaly badge.
+     Tests: test_explain (shock flagged + ranked, determinism across retrains,
+     summary survives).
+
+  8. AT-REST ENCRYPTION (core/crypto.py — opt-in)
+     AES-GCM app-layer encryption of the raw_line.message / raw_lines.raw
+     columns, keyed off SHA-256(LOGSENTINEL_DB_KEY), ON only when
+     LOGSENTINEL_ENCRYPT_AT_REST=1 (off by default, no behavior change).
+     Encrypted rows store "encv1:" + nonce+ciphertext; a raw sqlite3 read
+     shows ciphertext only while the API returns decrypted plaintext. FTS5 is
+     disabled under encryption (LIKE over decrypted text still works). README
+     documents key management + the FTS tradeoff. Tests: test_crypto
+     (round-trip, legacy/tampered survival, at-rest ciphertext proof,
+     flag-off reads of flag-on rows).
+
+Tests added in this milestone: test_rbac, test_response, test_baseline_envs,
+test_compliance_certin, test_fts, test_explain, test_crypto => 369 backend
+tests total (367 pass — the 2 failures are the pre-existing test_ai_llm
+GPU-env expectations, unrelated to this milestone). New e2e: RBAC viewer
+blocked / analyst triage-but-no-user-edit / seeded user roles => 47 e2e total,
+36 page-render + 11 functional flows, axe-scanned on every page. Playwright:
+47/47 passed.
+
 --------------------------------------------------------------------------------
 PITCH NOTE — DETERMINISTIC, EVIDENCE-TRACEABLE FINDINGS
 --------------------------------------------------------------------------------

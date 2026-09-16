@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from core.rbac import require_role
 from privacy.policy_engine import load_policy, save_policy, VALID_ACTIONS
 
 router = APIRouter()
@@ -16,7 +17,7 @@ def get_policy():
 
 
 @router.put("/policy")
-def put_policy(body: PolicyBody):
+def put_policy(body: PolicyBody, _: dict = Depends(require_role("admin"))):
     try:
         effective = save_policy(body.policy)
     except ValueError as e:

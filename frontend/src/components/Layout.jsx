@@ -10,6 +10,7 @@ import {
   FlaskConical,
   Gauge,
   Globe,
+  TrendingUp,
   Lock,
   Network,
   RadioTower,
@@ -20,33 +21,37 @@ import {
   ShieldAlert,
   MessagesSquare,
   Upload,
+  Users,
 } from 'lucide-react'
-import { useAuth } from '../lib/AuthContext.jsx'
+import { useAuth, useRole, hasRole } from '../lib/AuthContext.jsx'
 import GlitchText from './bits/GlitchText.jsx'
 
 const links = [
-  { to: '/', label: 'UPLOAD', end: true, icon: Upload },
-  { to: '/demo', label: '★ DEMO MODE', icon: Clapperboard },
-  { to: '/dashboard', label: 'DASHBOARD', icon: Gauge },
-  { to: '/explorer', label: 'LOG EXPLORER', icon: ScrollText },
-  { to: '/threats', label: 'THREATS', icon: ShieldAlert },
-  { to: '/alerts', label: 'ALERTS', icon: Bell },
-  { to: '/live', label: 'EVENT WALL', icon: RadioTower },
-  { to: '/graph', label: 'ATTACK GRAPH', icon: Network },
-  { to: '/intel', label: 'INTEL', icon: Globe },
-  { to: '/compliance', label: 'COMPLIANCE', icon: Scale },
-  { to: '/assets', label: 'ASSET INVENTORY', icon: Server },
-  { to: '/privacy', label: 'PRIVACY', icon: Lock },
-  { to: '/export', label: 'EXPORT', icon: Download },
-  { to: '/benchmark', label: 'BENCHMARK', icon: Activity },
-  { to: '/schema-docs', label: 'SCHEMA DOCS', icon: FileText },
-  { to: '/parser-lab', label: 'PARSER LAB', icon: FlaskConical },
-  { to: '/assistant', label: 'AI ASSISTANT', icon: MessagesSquare },
-  { to: '/modes', label: 'MODES', icon: Boxes },
+  { to: '/', label: 'UPLOAD', end: true, icon: Upload, minRole: 'analyst' },
+  { to: '/demo', label: '★ DEMO MODE', icon: Clapperboard, minRole: 'analyst' },
+  { to: '/dashboard', label: 'DASHBOARD', icon: Gauge, minRole: 'viewer' },
+  { to: '/explorer', label: 'LOG EXPLORER', icon: ScrollText, minRole: 'viewer' },
+  { to: '/threats', label: 'THREATS', icon: ShieldAlert, minRole: 'viewer' },
+  { to: '/alerts', label: 'ALERTS', icon: Bell, minRole: 'viewer' },
+  { to: '/live', label: 'EVENT WALL', icon: RadioTower, minRole: 'viewer' },
+  { to: '/graph', label: 'ATTACK GRAPH', icon: Network, minRole: 'viewer' },
+  { to: '/intel', label: 'INTEL', icon: Globe, minRole: 'viewer' },
+  { to: '/baseline', label: 'ENTITY BASELINE', icon: TrendingUp, minRole: 'viewer' },
+  { to: '/compliance', label: 'COMPLIANCE', icon: Scale, minRole: 'viewer' },
+  { to: '/assets', label: 'ASSET INVENTORY', icon: Server, minRole: 'viewer' },
+  { to: '/privacy', label: 'PRIVACY', icon: Lock, minRole: 'viewer' },
+  { to: '/export', label: 'EXPORT', icon: Download, minRole: 'viewer' },
+  { to: '/benchmark', label: 'BENCHMARK', icon: Activity, minRole: 'analyst' },
+  { to: '/schema-docs', label: 'SCHEMA DOCS', icon: FileText, minRole: 'viewer' },
+  { to: '/parser-lab', label: 'PARSER LAB', icon: FlaskConical, minRole: 'analyst' },
+  { to: '/assistant', label: 'AI ASSISTANT', icon: MessagesSquare, minRole: 'analyst' },
+  { to: '/modes', label: 'MODES', icon: Boxes, minRole: 'analyst' },
+  { to: '/users', label: 'USER MANAGEMENT', icon: Users, minRole: 'admin' },
 ]
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const role = useRole()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
 
@@ -83,7 +88,7 @@ export default function Layout() {
           <div className="text-[10px] text-text-muted tracking-wider mt-1.5">RAW LOGS IN · INTELLIGENCE OUT</div>
         </div>
         <nav className="flex-1 py-3 overflow-y-auto" aria-label="Main navigation">
-          {links.map((l) => {
+          {links.filter((l) => hasRole(l.minRole ?? 'viewer', role)).map((l) => {
             const Icon = l.icon
             return (
               <NavLink
@@ -117,7 +122,12 @@ export default function Layout() {
           <div className="text-[10px] text-text-muted">SIH26156 · v0.1.0</div>
           {user && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-text-secondary">{user.username}</span>
+              <span className="text-[10px] text-text-secondary">
+                {user.username}
+                <span className="ml-1.5 px-1 py-0.5 border border-slate-700 rounded text-[9px] text-emerald-400">
+                  {role.toUpperCase()}
+                </span>
+              </span>
               <button
                 onClick={logout}
                 className="text-[10px] text-text-secondary hover:text-red-400 transition-colors"

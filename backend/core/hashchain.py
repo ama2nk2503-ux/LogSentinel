@@ -16,9 +16,11 @@ GENESIS = ""
 
 def _event_digest(row) -> str:
     """Deterministic per-event digest over tamper-evident fields."""
+    from core.crypto import decrypt_text
     payload = "|".join(str(x if x is not None else "") for x in (
         row["event_id"], row["line_no"], row["ts"], row["src_ip"],
-        row["dst_ip"], row["event_type"], row["severity"], row["message"],
+        row["dst_ip"], row["event_type"], row["severity"],
+        decrypt_text(row["message"]),
     ))
     return hashlib.sha256(payload.encode("utf-8", "ignore")).hexdigest()
 

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core import alerts as alerting
+from core.rbac import require_role
 
 router = APIRouter()
 
@@ -32,7 +33,7 @@ def list_rules():
 
 
 @router.post("/alert-rules")
-def create_rule(body: RuleBody):
+def create_rule(body: RuleBody, _: dict = Depends(require_role("admin"))):
     rule_id = body.rule_id or body.name or "ALERT_RULE"
     rule_id = rule_id.strip().upper().replace(" ", "_")
     payload = _body(rule_id, body)
@@ -45,7 +46,7 @@ def create_rule(body: RuleBody):
 
 
 @router.put("/alert-rules/{rule_id}")
-def update_rule(rule_id: str, body: RuleBody):
+def update_rule(rule_id: str, body: RuleBody, _: dict = Depends(require_role("admin"))):
     updated = alerting.update_rule(rule_id, _body(rule_id, body))
     if updated is None:
         raise HTTPException(404, "Alert rule not found")
@@ -53,7 +54,7 @@ def update_rule(rule_id: str, body: RuleBody):
 
 
 @router.post("/alert-rules/reload")
-def reload_rules():
+def reload_rules(_: dict = Depends(require_role("admin"))):
     count = alerting.reload_alert_rules()
     return {"reloaded": True, "rules": count}
 
@@ -75,7 +76,7 @@ def get_alert(alert_id: str):
 
 
 @router.post("/alerts/{alert_id}/ack")
-def ack_alert(alert_id: str):
+def ack_alert(alert_id: str, _: dict = Depends(require_role("analyst"))):
     alert = alerting.ack(alert_id)
     if alert is None:
         raise HTTPException(404, "Alert not found")
@@ -83,7 +84,7 @@ def ack_alert(alert_id: str):
 
 
 @router.post("/alerts/{alert_id}/resolve")
-def resolve_alert(alert_id: str):
+def resolve_alert(alert_id: str, _: dict = Depends(require_role("analyst"))):
     alert = alerting.resolve(alert_id)
     if alert is None:
         raise HTTPException(404, "Alert not found")
@@ -91,7 +92,7 @@ def resolve_alert(alert_id: str):
 
 
 @router.post("/alerts/{alert_id}/false-positive")
-def false_positive(alert_id: str):
+def false_positive(alert_id: str, _: dict = Depends(require_role("analyst"))):
     alert = alerting.false_positive(alert_id)
     if alert is None:
         raise HTTPException(404, "Alert not found")
@@ -99,7 +100,7 @@ def false_positive(alert_id: str):
 
 
 @router.post("/alerts/{alert_id}/notify")
-def notify(alert_id: str):
+def notify(alert_id: str, _: dict = Depends(require_role("analyst"))):
     try:
         return alerting.post_notify(alert_id)
     except LookupError as exc:

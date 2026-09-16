@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'analyst',
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -252,6 +253,38 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS baseline_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type TEXT NOT NULL,
+    entity TEXT NOT NULL,
+    attribute TEXT NOT NULL,
+    n INTEGER DEFAULT 0,
+    mean REAL DEFAULT 0,
+    m2 REAL DEFAULT 0,
+    last_value REAL,
+    last_seen TEXT,
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE (entity_type, entity, attribute)
+);
+CREATE INDEX IF NOT EXISTS ix_baseline_entity ON baseline_stats(entity_type, entity);
+
+CREATE TABLE IF NOT EXISTS baseline_jobs (
+    job_id TEXT PRIMARY KEY,
+    folded_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS actions_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id INTEGER NOT NULL,
+    action_id TEXT NOT NULL,
+    action_label TEXT NOT NULL,
+    category TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    outcome TEXT NOT NULL DEFAULT 'SIMULATED — no live integration configured',
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS ix_actions_log_incident ON actions_log(incident_id);
 """
 
 
@@ -291,6 +324,10 @@ _COLUMN_MIGRATIONS = [
     ("events", "anomalous", "INTEGER DEFAULT 0"),
     ("events", "dedup_event_id", "TEXT DEFAULT ''"),
     ("events", "timestamp_source", "TEXT DEFAULT 'ingest'"),
+    # M5 RBAC: role tiers viewer < analyst < admin. Default 'analyst' keeps
+    # pre-existing accounts (registered before this milestone) on the analyst
+    # tier; the seeded admin account is explicitly 'admin'.
+    ("users", "role", "TEXT DEFAULT 'analyst'"),
 ]
 
 
@@ -309,6 +346,10 @@ def init_db() -> None:
     with db() as conn:
         conn.executescript(SCHEMA)
         _migrate(conn)
+        # M5 Item 6: FTS5 free-text index (feature-detected — absent runtimes
+        # keep the LIKE fallback; DDL is a no-op when unavailable).
+        from core.fts import ensure as ensure_fts
+        ensure_fts(conn)
     # M4: backfill deterministic ids for rows ingested before the column
     # existed (idempotent — recomputing yields the same hash).
     from core.dedup_backfill import backfill_dedup_ids

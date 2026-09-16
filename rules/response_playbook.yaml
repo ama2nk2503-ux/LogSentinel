@@ -1,0 +1,141 @@
+# SOAR-lite response playbook (M5 Item 3).
+#
+# Maps detection->incident categories (the canonical TAXONOMY names in
+# detection/classifier.py) to a deterministic, ordered list of recommended
+# response actions. Reviews and "simulations" are advisory only — a simulate
+# click writes a row to the `actions_log` table and NEVER touches a network
+# socket or external system. Each action carries a plain-language reason so the
+# recommendation can be audited before any real runbook is executed.
+#
+# Keys are matched case-insensitively against each incident's comma-separated
+# category list; `unknown` is the fallback for unmatched categories.
+
+playbook:
+  - category: Brute Force
+    actions:
+      - id: BLOCK_SRC_1H
+        label: Block source IP for 1 hour
+        reason: The entity repeatedly failed authentication within a short window; a temporary perimeter block contains the attempt without permanently denying a legitimately retrying user.
+      - id: ENFORCE_LOCKOUT_MFA
+        label: Enforce account lockout and MFA on targeted accounts
+        reason: Failed-password bursts target specific accounts; lockout thresholds plus MFA stop credential stuffing before a success is reached.
+      - id: RESET_TARGET_CREDS
+        label: Reset credentials of any affected account
+        reason: Even a single successful authentication in the same window may reuse the same password; rotate credentials to invalidate any captured secret.
+
+  - category: Credential Attack
+    actions:
+      - id: DISABLE_ACCOUNT
+        label: Disable the affected account
+        reason: The incident points at account takeover activity; disabling the account stops continued abuse while the source is investigated.
+      - id: FORCE_RESET_TRANSITIVE
+        label: Force credential reset and review transitive access
+        reason: Credential-led attacks often reuse the same password across accounts; reset the account and audit any service that trusts it.
+      - id: REVIEW_AUTH_LOGS
+        label: Review authentication logs for follow-up activity
+        reason: Confirm whether the attacker reused the credential against other hosts or services before the incident was correlated.
+
+  - category: Reconnaissance
+    actions:
+      - id: RATE_LIMIT_SRC
+        label: Rate-limit or block the source at the perimeter
+        reason: Profile-scraping probes came from a single source; rate limiting slows the scan while evidence is collected.
+      - id: VERIFY_EXPOSURE
+        label: Verify external exposure of probed services
+        reason: The probes enumerate specific services; confirm what is reachable from the outside and close anything unnecessary.
+
+  - category: Port Scanning
+    actions:
+      - id: BLOCK_SCANNER
+        label: Block the scanning source at the firewall
+        reason: A sweep across multiple destination ports from one entity indicates active scanning rather than accidental traffic.
+      - id: REVIEW_OPEN_PORTS
+        label: Audit the probed ports for unnecessary exposure
+        reason: Map the scanned ports to running services and ensure each is required and properly firewalled.
+
+  - category: Malware
+    actions:
+      - id: ISOLATE_HOST
+        label: Isolate the affected host from the network
+        reason: Malware activity on the host risks lateral movement; disconnecting it contains the infection.
+      - id: CAPTURE_FORENSICS
+        label: Capture volatile evidence before reimaging
+        reason: Preserve process lists and network connections associated with the detection so the infection can be attributed.
+      - id: ROTATE_HOST_CREDS
+        label: Rotate credentials used on the affected host
+        reason: Any secret typed into a compromised host must be treated as compromised until proven otherwise.
+
+  - category: Phishing
+    actions:
+      - id: SEARCH_MAILGW
+        label: Search mail-gateway logs for the indicator
+        reason: Determine which recipients saw the phishing indicator and whether any delivered or clicked it.
+      - id: BRIEF_TARGETS
+        label: Brief targeted users and check for account compromise
+        reason: Let recipients know they were targeted and prompt for a security review of their recent sign-ins.
+
+  - category: Web Attack
+    actions:
+      - id: ROTATE_DB_CREDS
+        label: Rotate database and application credentials
+        reason: A web-layer exploit may have reached the data tier; rotating DB and app secrets invalidates any credential the payload extracted.
+      - id: REVIEW_WAF
+        label: Review WAF / input-validation coverage for the payload
+        reason: The payload pattern hit the application directly; confirm it is blocked by WAF rules and that input validation rejects it.
+      - id: ISOLATE_WEB_HOST
+        label: Isolate the web host for inspection
+        reason: Confirm whether the payload achieved code execution before returning the service to rotation.
+
+  - category: Data Exfiltration
+    actions:
+      - id: QUARANTINE_DESTINATION
+        label: Quarantine the destination
+        reason: Data was pushed to a specific destination; blocking that destination stops further transfer while volume is reviewed.
+      - id: REVIEW_VOLUMES
+        label: Review transferred volumes and DLP coverage
+        reason: Establish how much data left and whether data-loss-prevention rules would have caught the same egress path.
+
+  - category: Privilege Escalation
+    actions:
+      - id: REVOKE_ELEVATED
+        label: Revoke elevated sessions
+        reason: Elevation paths were exercised; ending elevated sessions removes the attacker's current foothold.
+      - id: AUDIT_ELEVATION_PATHS
+        label: Audit sudo, admin and privilege-broker paths
+        reason: Identify which privilege mechanism was abused so the elevation path can be hardened or removed.
+
+  - category: Command Execution
+    actions:
+      - id: ISOLATE_EXEC_HOST
+        label: Isolate the host where commands executed
+        reason: Remote command execution means the host is compromised; isolation prevents the actor from moving laterally.
+      - id: CAPTURE_EXEC_EVIDENCE
+        label: Capture volatile evidence and process lineage
+        reason: Record the executed command chain to determine the actor's objective and any persisted foothold.
+      - id: ROTATE_EXEC_CREDS
+        label: Rotate credentials reachable from the host
+        reason: Anything the executed commands touched may be compromised; rotate transitive credentials.
+
+  - category: Persistence
+    actions:
+      - id: HUNT_PERSISTENCE
+        label: Hunt scheduled tasks, run keys and service units
+        reason: Persistence mechanisms rebuild the foothold after cleanup; enumerate the common auto-start locations on affected hosts.
+      - id: REIMAGE_IF_CONFIRMED
+        label: Reimage confirmed hosts
+        reason: Persistent implants are hard to fully remove reliably; reimage known-compromised hosts to a known-good state.
+
+  - category: Lateral Movement
+    actions:
+      - id: SEGMENT_PATHS
+        label: Segment the network paths used
+        reason: The entity traversed between hosts; network segmentation cuts the routes the actor used to spread.
+      - id: RESET_TRANSITIVE_CREDS
+        label: Reset credentials reachable from the hops
+        reason: Credentials passed through the traversed hosts may be in the actor's hands; reset them transitively.
+
+  - category: Unknown
+    actions:
+      - id: MANUAL_TRIAGE
+        label: Triage manually with the attached evidence
+        reason: No playbook category matched the incident; review the correlated evidence and decide a response.

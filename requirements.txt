@@ -11,3 +11,4 @@ httpx>=0.28
 PyJWT>=2.13
 bcrypt>=5.0
 scikit-learn>=1.6
+cryptography>=42

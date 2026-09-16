@@ -11,6 +11,7 @@ const PAGES = [
   { path: '/live', name: 'EventWall', markers: ['EVENT WALL'] },
   { path: '/graph', name: 'Graph', markers: ['LIVE ATTACK GRAPH'] },
   { path: '/intel', name: 'Intel', markers: ['THREAT INTELLIGENCE'] },
+  { path: '/baseline', name: 'Baseline', markers: ['ENTITY BASELINE', 'ANOMALY SCAN'] },
   { path: '/compliance', name: 'Compliance', markers: ['COMPLIANCE AUDIT'] },
   { path: '/assets', name: 'AssetInventory', markers: ['ASSET INVENTORY'] },
   { path: '/privacy', name: 'Privacy', markers: ['PRIVACY POLICY ENGINE'] },
@@ -20,6 +21,7 @@ const PAGES = [
   { path: '/parser-lab', name: 'ParserLab', markers: ['PARSER LAB'] },
   { path: '/assistant', name: 'Assistant', markers: ['AI ASSISTANT'] },
   { path: '/modes', name: 'Modes', markers: ['THE OFFLINE GUARANTEE'] },
+  { path: '/users', name: 'Users', markers: ['USER MANAGEMENT'] },
 ]
 
 let token = ''
@@ -38,11 +40,15 @@ function seedText() {
 }
 
 async function login(page) {
+  await loginAs(page, 'admin', 'changeme')
+}
+
+async function loginAs(page, username, password, landingUrl = '**/') {
   await page.goto('/login')
-  await page.fill('#username', 'admin')
-  await page.fill('#password', 'changeme')
+  await page.fill('#username', username)
+  await page.fill('#password', password)
   await Promise.all([
-    page.waitForURL('**/'),
+    page.waitForURL(landingUrl),
     page.click('button[type="submit"]'),
   ])
 }
@@ -76,9 +82,19 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.beforeEach(async ({ page }) => {
-  const auth = { Authorization: `Bearer ${token}` }
-  await page.addInitScript((t) => { if (t) localStorage.setItem('ls_token', t) }, token)
+  await page.addInitScript((adminToken) => {
+    const override = sessionStorage.getItem('ls_token_override')
+    if (override) localStorage.setItem('ls_token', override)
+    else if (adminToken) localStorage.setItem('ls_token', adminToken)
+  }, token)
 })
+
+async function impersonate(page, username) {
+  // Force every navigation (which re-runs the init script) to use this user's session.
+  await page.evaluate(() =>
+    sessionStorage.setItem('ls_token_override', localStorage.getItem('ls_token'))
+  )
+}
 
 test('login with default credentials and land on upload page', async ({ page }) => {
   await login(page)
@@ -352,6 +368,24 @@ test('Assistant: sends a chat message and gets a grounded deterministic answer',
   await expect(page.getByText('EVIDENCE / FACTS USED (')).toBeVisible()
 })
 
+test('Baseline: rescan folds jobs and the anomaly scan panel renders', async ({ page }) => {
+  await page.goto('/baseline')
+  await expect(page.getByText('RUNNING BASELINE')).toBeVisible()
+
+  const rescan = page.getByRole('button', { name: 'RE-SCAN JOBS' })
+  await rescan.click()
+  await expect(rescan).toBeEnabled({ timeout: 20_000 }) // in-flight POST completes
+  await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 20_000 })
+
+  // Anomaly scan auto-selects the newest job and renders an explained verdict.
+  await expect(page.getByText('ANOMALY SCAN AGAINST BASELINE')).toBeVisible()
+  await expect(page.locator('ul.divide-y li').first()).toBeVisible({ timeout: 15_000 })
+
+  const text = await page.locator('ul.divide-y').innerText()
+  const explained = text.includes('baseline mean') || text.includes('within the learned baseline')
+  expect(explained, `anomaly row must self-explain, got: ${text.slice(0, 160)}`).toBeTruthy()
+})
+
 test('mobile: sidebar opens via menu and closes on Escape', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const page = await ctx.newPage()
@@ -361,4 +395,75 @@ test('mobile: sidebar opens via menu and closes on Escape', async ({ browser }) 
   await page.keyboard.press('Escape')
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).not.toBeInViewport()
   await ctx.close()
+})
+
+test('RBAC: viewer is blocked from admin/lab surfaces and edit controls', async ({ page, request }) => {
+  // Ensure the viewer account exists (idempotent — the shared data DB persists across runs).
+  const auth = { Authorization: `Bearer ${token}` }
+  const created = await request.post('/api/auth/users',
+    { headers: auth, data: { username: 'e2e_viewer', password: 'viewerpass', role: 'viewer' } })
+  expect([200, 409]).toContain(created.status())
+
+  await loginAs(page, 'e2e_viewer', 'viewerpass', '**/dashboard')
+  await impersonate(page, 'e2e_viewer')
+
+  // Admin-only USER MANAGEMENT link is hidden from the sidebar.
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).not.toContainText('USER MANAGEMENT')
+
+  // Analyst/operator surfaces are hidden from a viewer too.
+  const nav = page.getByRole('navigation', { name: 'Main navigation' })
+  for (const label of ['UPLOAD', 'DEMO MODE', 'BENCHMARK', 'PARSER LAB', 'AI ASSISTANT', 'MODES']) {
+    await expect(nav).not.toContainText(label)
+  }
+
+  // Direct URL to an analyst surface shows the gated notice (viewer can't open it).
+  await page.goto('/demo')
+  await expect(page.getByText('ACCESS RESTRICTED')).toBeVisible()
+
+  // Viewer cannot reach the admin-only users page: gated notice is shown.
+  await page.goto('/users')
+  await expect(page.getByText('ACCESS RESTRICTED')).toBeVisible()
+  await expect(page.getByText(/requires role ADMIN/)).toBeVisible()
+
+  // Alerts: MANAGE RULES is disabled (admin-only) rather than silently failing.
+  await page.goto('/alerts')
+  const manageRules = page.getByRole('button', { name: /MANAGE RULES/ })
+  await expect(manageRules).toBeDisabled()
+  await expect(manageRules).toHaveAttribute('title', 'requires admin')
+
+  // Privacy: SAVE POLICY disabled (admin-only).
+  await page.goto('/privacy')
+  const savePolicy = page.getByRole('button', { name: 'SAVE POLICY' })
+  await expect(savePolicy).toBeDisabled()
+  await expect(page.getByText(/Read-only for your role/)).toBeVisible()
+})
+
+test('RBAC: analyst can triage but not manage users', async ({ page, request }) => {
+  const auth = { Authorization: `Bearer ${token}` }
+  const created = await request.post('/api/auth/users',
+    { headers: auth, data: { username: 'e2e_analyst', password: 'analystpass', role: 'analyst' } })
+  expect([200, 409]).toContain(created.status())
+
+  await loginAs(page, 'e2e_analyst', 'analystpass')
+  await impersonate(page, 'e2e_analyst')
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).not.toContainText('USER MANAGEMENT')
+  // Analyst keeps the operator surfaces the viewer loses.
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toContainText('UPLOAD')
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toContainText('AI ASSISTANT')
+  await page.goto('/users')
+  await expect(page.getByText('ACCESS RESTRICTED')).toBeVisible()
+  await expect(page.getByText(/requires role ADMIN/)).toBeVisible()
+})
+
+test('RBAC: seeded user management page renders and roles can be read', async ({ page }) => {
+  await page.goto('/users')
+  await expect(page.getByRole('heading', { name: 'USER MANAGEMENT' })).toBeVisible()
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+  const adminRow = page.locator('tbody tr').filter({ hasText: 'admin' }).first()
+  await expect(adminRow).toContainText('ADMIN')
+  await expect(page.locator('tbody tr').filter({ hasText: 'e2e_viewer' }).first()).toContainText('VIEWER')
+
+  const results = await new AxeBuilder({ page }).analyze()
+  const serious = results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious')
+  expect(serious, `Users page axe: ${serious.map((v) => `${v.id} (${v.impact})`).join(', ')}`).toEqual([])
 })

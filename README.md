@@ -1,5 +1,7 @@
 # LogSentinel — SIH26156
 
+[![CI](https://github.com/ama2nk2503-ux/logsentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/ama2nk2503-ux/logsentinel/actions/workflows/ci.yml)
+
 > **Universal Cybersecurity Data Preparation and Threat Intelligence Layer**
 >
 > Transforms heterogeneous raw logs into normalized, privacy-safe, enriched, correlated and SIEM-ready security intelligence.
@@ -551,6 +553,16 @@ All metrics computed live from labeled fixtures in `samples/labeled/` — nothin
 - Uploaded content is **parsed, never executed**
 - React JSX auto-escapes; CEF/LEEF output escaped; STIX validated pre-download
 - All export surfaces route through the privacy policy choke point
+- Optional **at-rest encryption**: set `LOGSENTINEL_ENCRYPT_AT_REST=1` and a
+  per-deployment `LOGSENTINEL_DB_KEY` to AES-GCM-encrypt the
+  `events.message` and `raw_lines.raw` columns (raw text may carry
+  pre-redaction PII) before they touch disk. **Key-management assumption:**
+  the key lives in the process environment only — the same host can still
+  read its own database. Protection is aimed at anything that copies or
+  leaks the SQLite file (backups, media, exfil); it is NOT a substitute for
+  OS-level disk encryption, which should be the first line of defense. FTS5
+  free-text search is automatically disabled in this mode (encrypted text
+  cannot be tokenized); queries fall back to the plain pre-FTS LIKE scan.
 
 ---
 

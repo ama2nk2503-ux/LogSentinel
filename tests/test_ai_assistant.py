@@ -7,6 +7,18 @@ import ai.assistant as ais
 from ai.assistant import DISCLAIMER, assist, assistant_status
 
 
+def _admin_auth():
+    """Bearer header for the seeded admin account (M5 RBAC gating)."""
+    from core.auth import create_token, seed_admin
+    from core.storage import db
+
+    seed_admin()
+    with db() as conn:
+        row = conn.execute(
+            "SELECT id, role FROM users WHERE username = 'admin'").fetchone()
+    return {"Authorization": f"Bearer {create_token(row['id'], 'admin', row['role'])}"}
+
+
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
     monkeypatch.delenv("LOGSENTINEL_AI_SUMMARY", raising=False)
@@ -225,13 +237,15 @@ def test_chat_route_roundtrip(monkeypatch):
     app = FastAPI()
     app.include_router(router, prefix="/api")
     client = TestClient(app)
-    r = client.post("/api/assistant", json={"job_id": job, "question": "what?", "history": []})
+    r = client.post("/api/assistant", headers=_admin_auth(),
+                    json={"job_id": job, "question": "what?", "history": []})
     assert r.status_code == 200
     body = r.json()
     assert body["source"] == "deterministic_template"
     assert body["disclaimer"] == DISCLAIMER
 
-    r404 = client.post("/api/assistant", json={"job_id": "nope", "question": "what?", "history": []})
+    r404 = client.post("/api/assistant", headers=_admin_auth(),
+                       json={"job_id": "nope", "question": "what?", "history": []})
     assert r404.status_code == 404
 
     st = client.get("/api/assistant/status")
@@ -251,15 +265,16 @@ def test_patch_mode_route_roundtrip():
 
     assert client.get("/api/assistant/status").json()["enabled"] is True
 
-    r = client.patch("/api/assistant/mode", json={"mode": "off"})
+    r = client.patch("/api/assistant/mode", headers=_admin_auth(), json={"mode": "off"})
     assert r.status_code == 200
     st = r.json()
     assert st["mode"] == "off"
     assert st["enabled"] is False
 
-    bad = client.patch("/api/assistant/mode", json={"mode": "banana"})
+    bad = client.patch("/api/assistant/mode", headers=_admin_auth(), json={"mode": "banana"})
     assert bad.status_code == 422
 
-    st = client.patch("/api/assistant/mode", json={"mode": "on"}).json()
+    st = client.patch("/api/assistant/mode", headers=_admin_auth(),
+                      json={"mode": "on"}).json()
     assert st["mode"] == "on"
     assert st["enabled"] is True

@@ -1,7 +1,8 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from core.rbac import require_role
 from core.storage import db
 from detection.engine import load_rules, reload_rules
 from privacy.policy_engine import load_policy
@@ -36,5 +37,5 @@ def list_rules():
 
 
 @router.post("/rules/reload")
-def reload_rules_route():
+def reload_rules_route(_: dict = Depends(require_role("analyst"))):
     return {"count": reload_rules()}

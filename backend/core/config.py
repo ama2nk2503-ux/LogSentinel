@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     smtp_to: str = ""
+    # M5 Item 8: opt-in at-rest AES-GCM encryption of message/raw columns.
+    encrypt_at_rest: bool = False
+    db_key: str = ""
 
 
 settings = Settings()

@@ -120,10 +120,14 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
                 ev.pii_detected = sorted({h["type"] for h in detect_pii(ev.message)})
                 batch.append((ev, raw))
             with db() as conn:
+                from core.crypto import encrypt_text
                 conn.executemany(
                     "INSERT OR REPLACE INTO raw_lines (job_id, line_no, raw) VALUES (?, ?, ?)",
-                    [(job_id, _state["lines_emitted"] + i + 1, raw[:8000])
+                    [(job_id, _state["lines_emitted"] + i + 1, encrypt_text(raw[:8000]))
                      for i, (_, raw) in enumerate(batch)])
+                event_rows = [list(ev.to_row()) for ev, _ in batch]
+                for t in event_rows:
+                    t[16] = encrypt_text(t[16])
                 conn.executemany(
                     "INSERT INTO events (event_id, job_id, line_no, ts, event_type, source,"
                     " src_ip, dst_ip, src_port, dst_port, protocol, username, hostname,"
@@ -131,10 +135,18 @@ async def _stream_loop(job_id: str, interval_s: float, lines_per_tick: int):
                     " dedup_event_id, timestamp_source,"
                     " iocs_json, pii_json, mappings_json, attack_json, extras_json)"
                     " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    [ev.to_row() for ev, _ in batch])
+                    event_rows)
                 # M4 chain-of-custody: extend the hash chain after each batch.
                 from core.hashchain import append_batch
                 append_batch(conn, job_id)
+                # M5 Item 6: index this streaming batch into the FTS table
+                # in the same transaction (same write path as pipeline.py).
+                if batch:
+                    from core import fts as fts_search
+                    if fts_search.available(conn):
+                        first = _state["lines_emitted"] + 1
+                        fts_search.index_batch(conn, job_id, first,
+                                               first + len(batch) - 1)
             _state["lines_emitted"] += len(batch)
 
             if _state["lines_emitted"] % (lines_per_tick * 3) < lines_per_tick:

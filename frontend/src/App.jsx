@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import RequireRole from './components/RequireRole.jsx'
 import Login from './pages/Login.jsx'
 
 const Upload = lazy(() => import('./pages/Upload.jsx'))
@@ -22,6 +23,8 @@ const SchemaDocs = lazy(() => import('./pages/SchemaDocs.jsx'))
 const ParserLab = lazy(() => import('./pages/ParserLab.jsx'))
 const Assistant = lazy(() => import('./pages/Assistant.jsx'))
 const Modes = lazy(() => import('./pages/Modes.jsx'))
+const Users = lazy(() => import('./pages/Users.jsx'))
+const Baseline = lazy(() => import('./pages/Baseline.jsx'))
 
 function PageLoader() {
   return (
@@ -37,8 +40,10 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Suspense fallback={<PageLoader />}><Upload /></Suspense>} />
-          <Route path="/demo" element={<Suspense fallback={<PageLoader />}><Demo /></Suspense>} />
+          <Route path="/" element={
+            <RequireRole minRole="analyst"><Suspense fallback={<PageLoader />}><Upload /></Suspense></RequireRole>} />
+          <Route path="/demo" element={
+            <RequireRole minRole="analyst"><Suspense fallback={<PageLoader />}><Demo /></Suspense></RequireRole>} />
           <Route path="/dashboard" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
           <Route path="/dashboard/:jobId" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
           <Route path="/explorer" element={<Suspense fallback={<PageLoader />}><Explorer /></Suspense>} />
@@ -47,15 +52,25 @@ export default function App() {
           <Route path="/live" element={<Suspense fallback={<PageLoader />}><Live /></Suspense>} />
           <Route path="/graph" element={<Suspense fallback={<PageLoader />}><Graph /></Suspense>} />
           <Route path="/intel" element={<Suspense fallback={<PageLoader />}><Intel /></Suspense>} />
+          <Route path="/baseline" element={<Suspense fallback={<PageLoader />}><Baseline /></Suspense>} />
           <Route path="/compliance" element={<Suspense fallback={<PageLoader />}><Compliance /></Suspense>} />
           <Route path="/assets" element={<Suspense fallback={<PageLoader />}><Assets /></Suspense>} />
           <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
           <Route path="/export" element={<Suspense fallback={<PageLoader />}><ExportPage /></Suspense>} />
-          <Route path="/benchmark" element={<Suspense fallback={<PageLoader />}><Benchmark /></Suspense>} />
+          <Route path="/benchmark" element={
+            <RequireRole minRole="analyst"><Suspense fallback={<PageLoader />}><Benchmark /></Suspense></RequireRole>} />
           <Route path="/schema-docs" element={<Suspense fallback={<PageLoader />}><SchemaDocs /></Suspense>} />
-          <Route path="/parser-lab" element={<Suspense fallback={<PageLoader />}><ParserLab /></Suspense>} />
-          <Route path="/assistant" element={<Suspense fallback={<PageLoader />}><Assistant /></Suspense>} />
-          <Route path="/modes" element={<Suspense fallback={<PageLoader />}><Modes /></Suspense>} />
+          <Route path="/parser-lab" element={
+            <RequireRole minRole="analyst"><Suspense fallback={<PageLoader />}><ParserLab /></Suspense></RequireRole>} />
+          <Route path="/assistant" element={
+            <RequireRole minRole="analyst"><Suspense fallback={<PageLoader />}><Assistant /></Suspense></RequireRole>} />
+          <Route path="/modes" element={
+            <RequireRole minRole="analyst"><Suspense fallback={<PageLoader />}><Modes /></Suspense></RequireRole>} />
+          <Route path="/users" element={
+            <RequireRole minRole="admin">
+              <Suspense fallback={<PageLoader />}><Users /></Suspense>
+            </RequireRole>
+          } />
         </Route>
       </Route>
     </Routes>

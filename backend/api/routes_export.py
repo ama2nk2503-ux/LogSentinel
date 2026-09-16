@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse, Response
 
 from core import jobs
+from core.rbac import require_role
 from core.storage import db
 from exporters.exporters import EXPORTERS
 from exporters.validator import ExportValidationError, validate_export
@@ -20,9 +21,7 @@ MEDIA = {
 }
 
 
-@router.post("/export/{job_id}")
-@router.get("/export/{job_id}")
-def export_job(job_id: str, format: str = "json"):
+def _do_export(job_id: str, format: str):
     fmt = format.lower().strip()
     exporter = EXPORTERS.get(fmt)
     if exporter is None:
@@ -51,6 +50,17 @@ def export_job(job_id: str, format: str = "json"):
         media_type=MEDIA[fmt],
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/export/{job_id}")
+def export_job_post(job_id: str, format: str = "json",
+                    _: dict = Depends(require_role("analyst"))):
+    return _do_export(job_id, format)
+
+
+@router.get("/export/{job_id}")
+def export_job_get(job_id: str, format: str = "json"):
+    return _do_export(job_id, format)
 
 
 @router.get("/export/formats")

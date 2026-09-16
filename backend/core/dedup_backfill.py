@@ -33,7 +33,9 @@ def backfill_dedup_ids(batch_size: int = BATCH) -> int:
             if not rows:
                 break
             for r in rows:
-                raw = r["raw_line"] or r["message"] or ""
+                from core.crypto import decrypt_text
+                raw = (decrypt_text(r["raw_line"])
+                       or decrypt_text(r["message"]) or "")
                 # timestamp_source="event" iff a parseable ts produced e.ts;
                 # rows whose ts is empty were ingested with the ingest-time
                 # fallback (NO_TS_MARKER keeps their identity stable).

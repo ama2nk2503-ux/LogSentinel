@@ -4,6 +4,7 @@ import JobPicker from '../components/JobPicker.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import Skeleton from '../components/Skeleton.jsx'
 import { api, classNames } from '../lib/api.js'
+import { useRole, hasRole } from '../lib/AuthContext.jsx'
 
 const CLASS_STYLE = {
   MALICIOUS: 'border-red-700 bg-red-950/30 text-red-300',
@@ -63,6 +64,15 @@ export default function Threats() {
       api(`/threats/${id}/assign`, { method: 'POST', body: JSON.stringify({ assignee }) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['threats', jobId] }),
   })
+
+  // M5 item 3: recommended & simulated response actions (SOAR-lite).
+  const simulate = useMutation({
+    mutationFn: ({ id, actionId }) =>
+      api(`/incidents/${id}/actions/${actionId}/simulate`, { method: 'POST' }),
+    onSuccess: (_res, vars) =>
+      queryClient.invalidateQueries({ queryKey: ['threat-actions', vars.id] }),
+  })
+  const canAct = hasRole('analyst', useRole())
 
   // M4 item 7: rule-vs-ML agreement panel (pure UI — data both halves already produce)
   const ml = useQuery({
@@ -173,6 +183,8 @@ export default function Threats() {
                 </div>
               </div>
             </div>
+
+            <RecommendedResponse inc={inc} simulate={simulate} canAct={canAct} />
           </div>
         ))}
       </div>
@@ -801,5 +813,55 @@ function ActorKnowledgeGraph({ jobId, data }) {
         </div>
       )}
     </section>
+  )
+}
+
+// M5 item 3: SOAR-lite — per-action "Simulate" buttons + simulated-action history.
+function RecommendedResponse({ inc, simulate, canAct }) {
+  const { data: history } = useQuery({
+    queryKey: ['threat-actions', inc.id],
+    queryFn: () => api(`/incidents/${inc.id}/actions`).then((d) => d.actions),
+    enabled: !!(inc.recommended_actions && inc.recommended_actions.length),
+  })
+  const actions = inc.recommended_actions || []
+  if (actions.length === 0) return null
+
+  return (
+    <div className="px-5 py-3 border-t border-sky-900/40 bg-sky-950/10">
+      <div className="text-[10px] tracking-widest text-sky-400 mb-2">RECOMMENDED RESPONSE · PLAYBOOK</div>
+      <ul className="space-y-2">
+        {actions.map((a) => (
+          <li key={a.id} className="flex items-start gap-3">
+            <div className="text-xs flex-1">
+              <span className="font-mono text-[10px] text-sky-300 bg-sky-950/60 border border-sky-900 rounded px-1 mr-2">{a.id}</span>
+              <span className="text-slate-200">{a.label}</span>
+              <div className="text-[11px] text-slate-400 mt-0.5">{a.reason}</div>
+            </div>
+            <button
+              onClick={() => simulate.mutate({ id: inc.id, actionId: a.id })}
+              disabled={!canAct || simulate.isPending}
+              title={canAct ? `Record a SIMULATED run of ${a.id}` : 'requires analyst or above'}
+              className="btn btn-ghost px-3 py-1.5 text-[11px] whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40">
+              SIMULATE
+            </button>
+          </li>
+        ))}
+      </ul>
+      {history && history.length > 0 && (
+        <div className="mt-3">
+          <div className="text-[10px] tracking-widest text-slate-500 mb-2">SIMULATED-ACTION HISTORY</div>
+          <ul className="space-y-1.5 border border-slate-800/70 rounded p-2 bg-black/20 max-h-28 overflow-auto">
+            {history.map((h) => (
+              <li key={h.id} className="text-[11px] flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                <span className="font-mono text-[10px] text-sky-300">{h.action_id}</span>
+                <span className="text-slate-400">by {h.actor}</span>
+                <span className="text-slate-500">{h.created_at ? h.created_at.replace('T', ' ').slice(0, 19) : ''}</span>
+                <span className="text-emerald-400">{h.outcome}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   )
 }

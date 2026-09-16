@@ -2,37 +2,47 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, main]
   pull_request:
 
 jobs:
   backend:
-    name: Backend tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: "3.14"
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run pytest
-        run: pytest
+      - name: Run backend tests
+        run: python -m pytest -q
 
   frontend:
-    name: Frontend build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
+          node-version: 22
+      - name: Install backend dependencies (for uvicorn under e2e)
+        run: pip install -r ../requirements.txt
+      - name: Install frontend dependencies
         run: npm ci
-      - name: Build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Build the SPA
         run: npm run build
+      - name: Boot backend
+        run: |
+          nohup python -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/api/health && exit 0; sleep 1; done
+          echo "backend did not become healthy" && exit 1
+      - name: Run Playwright e2e
+        run: npx playwright test

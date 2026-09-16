@@ -136,10 +136,16 @@ def run_job(job_id: str) -> None:
 
         def flush():
             if raw_buf:
+                from core.crypto import encrypt_text
+                raw_rows = [(job_id, line_no, encrypt_text(raw[:8000]))
+                            for job_id, line_no, raw in raw_buf]
+                event_rows = [list(t) for t in event_buf]
+                for t in event_rows:
+                    t[16] = encrypt_text(t[16])
                 with db() as conn:
                     conn.executemany(
                         "INSERT OR REPLACE INTO raw_lines (job_id, line_no, raw) VALUES (?, ?, ?)",
-                        raw_buf,
+                        raw_rows,
                     )
                     conn.executemany(
                         "INSERT INTO events (event_id, job_id, line_no, ts, event_type, source,"
@@ -148,12 +154,21 @@ def run_job(job_id: str) -> None:
                         " dedup_event_id, timestamp_source,"
                         " iocs_json, pii_json, mappings_json, attack_json, extras_json)"
                         " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        event_buf,
+                        event_rows,
                     )
                     # M4 chain-of-custody: extend the per-job hash chain after
                     # each batch insert (never breaks ingestion).
                     from core.hashchain import append_batch
                     append_batch(conn, job_id)
+                    # M5 Item 6: keep the free-text FTS index in sync inside
+                    # THIS batch — no separate write path that could drift.
+                    if event_buf:
+                        from core import fts as fts_search
+                        if fts_search.available(conn):
+                            fts_search.index_batch(
+                                conn, job_id,
+                                min(r[2] for r in event_buf),
+                                max(r[2] for r in event_buf))
                 raw_buf.clear()
                 event_buf.clear()
 
@@ -231,6 +246,13 @@ def run_job(job_id: str) -> None:
                          intel_reports=len(intel["reports"]))
         from detection.attack import enrich_job
         enrich_job(job_id)
+        # Entity baseline windows (Welford online stats). New, additive table;
+        # if the fold ever fails it must not fail ingestion of the job.
+        try:
+            from core.baseline import fold_job
+            fold_job(job_id)
+        except Exception as exc:  # noqa: BLE001 — baseline must not fail the job
+            jobs.merge_stats(job_id, baseline_error=f"{type(exc).__name__}: {exc}")
         jobs.update_job(job_id, stage="classified", status="done", progress=100.0)
     except Exception as exc:  # noqa: BLE001 — job isolation; error surfaces in job row
         jobs.fail_job(job_id, f"{type(exc).__name__}: {exc}")

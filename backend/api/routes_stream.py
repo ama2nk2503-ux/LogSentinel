@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from core.rbac import require_role
 from core.storage import db
 from streaming import simulator
 
@@ -13,12 +14,12 @@ class StreamStart(BaseModel):
 
 
 @router.post("/stream/start")
-async def stream_start(body: StreamStart):
+async def stream_start(body: StreamStart, _: dict = Depends(require_role("analyst"))):
     return simulator.start_stream(body.interval_ms, body.lines_per_tick)
 
 
 @router.post("/stream/stop")
-async def stream_stop():
+async def stream_stop(_: dict = Depends(require_role("analyst"))):
     return simulator.stop_stream()
 
 
@@ -55,8 +56,12 @@ def stream_recent(limit: int = 50, severity: str | None = None):
             f"SELECT event_id, ts, source, event_type, src_ip, dst_ip, severity,"
             f" message, threat_type, risk_score FROM events WHERE {where}"
             f" ORDER BY id DESC LIMIT ?", params).fetchall()
+    from core.crypto import decrypt_text
+    out = [dict(r) for r in rows]
+    for d in out:
+        d["message"] = decrypt_text(d.get("message"))
     return {
-        "events": [dict(r) for r in rows],
+        "events": out,
         "running": st["running"],
         "job_id": job_id,
         "lines_emitted": st["lines_emitted"],

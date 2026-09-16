@@ -7,9 +7,10 @@ is written to the DB; the upload/paste flow is untouched.
 
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from core.rbac import require_role
 from parsers.detector import detect_format
 from parsers.load_all import *  # noqa: F401,F403 — registers all parsers
 from parsers.registry import LINE_PARSERS, get_line_parser
@@ -45,7 +46,7 @@ def _refine_label(fmt: str, fields: dict) -> str:
 
 
 @router.post("/parserlab/parse")
-def parser_lab(body: LabBody):
+def parser_lab(body: LabBody, _: dict = Depends(require_role("analyst"))):
     lines = body.text.splitlines()
     sample = [ln for ln in lines if ln.strip()][:300]
     fmt_info = detect_format(sample)

@@ -1,12 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from core.benchmark import latest_results, run_benchmark
+from core.rbac import require_role
 
 router = APIRouter()
 
 
 @router.post("/benchmark/run")
-def start_benchmark():
+def start_benchmark(_: dict = Depends(require_role("analyst"))):
     return run_benchmark()
 
 
