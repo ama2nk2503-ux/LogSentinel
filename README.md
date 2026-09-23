@@ -1,4 +1,4 @@
-# LogSentinel — SIH26156
+# LogSentinel —
 
 [![CI](https://github.com/ama2nk2503-ux/logsentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/ama2nk2503-ux/logsentinel/actions/workflows/ci.yml)
 
