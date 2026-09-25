@@ -145,12 +145,7 @@ export default function Threats() {
             <div className="grid md:grid-cols-2 gap-0 border-t border-inherit">
               <div className="p-4 border-r border-slate-800/50">
                 <div className="text-[10px] tracking-widest text-slate-500 mb-2">WHY WAS THIS DETECTED?</div>
-                {inc.ai_summary && (
-                  <div className="mb-3 border-l-2 border-purple-700 pl-2" data-testid="ai-summary">
-                    <div className="text-[11px] text-purple-300">{inc.ai_summary.narration}</div>
-                    <div className="text-[10px] text-slate-500 mt-1">⚠ {inc.ai_summary.disclaimer}</div>
-                  </div>
-                )}
+                <NarrationBlock inc={inc} />
                 {inc.description && (
                   <div className="mb-3 border-l-2 border-emerald-700 pl-2" data-testid="what-was-found">
                     <div className="text-[10px] uppercase tracking-widest text-emerald-400 mb-1">What was found</div>
@@ -213,6 +208,34 @@ export default function Threats() {
         </div>
       )}
       </>
+      )}
+    </div>
+  )
+}
+
+function NarrationBlock({ inc }) {
+  const query = useQuery({
+    queryKey: ['narration', inc.id],
+    queryFn: () => api(`/threats/${inc.id}/narration`),
+    enabled: !inc.ai_summary,
+  })
+  const ai = inc.ai_summary || query.data?.ai_summary
+  if (!ai) {
+    if (query.isFetching) {
+      return (
+        <div className="mb-3 border-l-2 border-purple-900 pl-2 text-[11px] text-slate-500">
+          narrating… (deterministic when no local model answers)
+        </div>
+      )
+    }
+    return null
+  }
+  return (
+    <div className="mb-3 border-l-2 border-purple-700 pl-2" data-testid="ai-summary">
+      <div className="text-[11px] text-purple-300">{ai.narration}</div>
+      <div className="text-[10px] text-slate-500 mt-1">⚠ {ai.disclaimer}</div>
+      {ai.source && (
+        <div className="text-[10px] text-slate-600 mt-0.5 uppercase tracking-wider">{ai.source}</div>
       )}
     </div>
   )

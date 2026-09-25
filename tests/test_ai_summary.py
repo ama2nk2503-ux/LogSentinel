@@ -87,9 +87,9 @@ def test_disclaimer_wording_is_the_mandated_one():
     assert DISCLAIMER == "AI-generated summary — verify against evidence below."
 
 
-def test_threats_payload_carries_narration(monkeypatch):
+def test_threats_payload_is_lazy_and_narration_lives_on_its_own_endpoint(monkeypatch):
     from tests.test_detection import insert_event
-    from api.routes_threats import job_threats
+    from api.routes_threats import job_threats, incident_narration
     from detection.engine import evaluate_job
     from detection.correlator import build_incidents
     from core import jobs
@@ -103,13 +103,17 @@ def test_threats_payload_carries_narration(monkeypatch):
     evaluate_job(job)
     build_incidents(job)
 
+    # The list endpoint stays on the hot path: deterministic-only, no narration.
     payload = job_threats(job)
-    for inc in payload["incidents"]:
-        assert inc["ai_summary"]["disclaimer"] == DISCLAIMER
-        assert inc["ai_summary"]["source"] == "deterministic_template"
+    assert not any("ai_summary" in inc for inc in payload["incidents"])
+
+    # The card endpoint narrates on demand (deterministic without a model).
+    inc_id = payload["incidents"][0]["id"]
+    narration = incident_narration(inc_id)
+    assert narration["ai_summary"]["disclaimer"] == DISCLAIMER
+    assert narration["ai_summary"]["source"] == "deterministic_template"
 
     monkeypatch.setattr(ai_llm, "probe", lambda: True)
     monkeypatch.setattr(ais, "_call_local_llm", lambda prompt: "local narration.")
-    payload = job_threats(job)
-    assert any(inc.get("ai_summary", {}).get("source") == "local_llm"
-               for inc in payload["incidents"])
+    narration = incident_narration(inc_id)
+    assert narration["ai_summary"]["source"] == "local_llm"

@@ -202,10 +202,24 @@ test('Threats/Intel/Graph render with seeded data', async ({ page }) => {
   await login(page)
   for (const p of ['/threats', '/intel', '/graph']) {
     await page.goto(p)
+    const narRespPromise = p === '/threats'
+      ? page.waitForResponse((r) => /\/threats\/\d+\/narration$/.test(r.url()), { timeout: 45_000 })
+      : Promise.resolve(null)
     await selectSeedJob(page)
     await expect(openHtml(page)).toContainText(
       p === '/threats' ? /ALL RULE MATCHES|WHY WAS THIS DETECTED/ : p === '/intel' ? 'INDICATORS' : /nodes|No entities/,
     )
+    if (p === '/threats') {
+      // M4/M5 lazy narration: each card issues its own GET /narration AFTER the
+      // list has rendered. The narration body may be empty when the AI toggle
+      // is off; when present (deterministic template when no local model
+      // answers) the card must render it.
+      const narResp = await narRespPromise
+      const narration = await narResp.json()
+      if (narration.ai_summary) {
+        await expect(page.getByTestId('ai-summary').first()).toBeVisible({ timeout: 30_000 })
+      }
+    }
   }
 })
 

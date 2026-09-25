@@ -40,6 +40,7 @@ jobs:
       - name: Build the SPA
         run: npm run build
       - name: Boot backend
+        working-directory: backend
         run: |
           nohup python -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/api/health && exit 0; sleep 1; done
