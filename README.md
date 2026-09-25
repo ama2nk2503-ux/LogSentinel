@@ -1,4 +1,4 @@
-# LogSentinel —
+# LogSentinel-Air Gapped Log Analytics and Threat Detection for Digital India
 
 [![CI](https://github.com/ama2nk2503-ux/logsentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/ama2nk2503-ux/logsentinel/actions/workflows/ci.yml)
 
